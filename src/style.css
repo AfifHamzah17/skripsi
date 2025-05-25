@@ -1,0 +1,468 @@
+/* Reset dan global */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+}
+
+.container {
+  padding-inline: 32px;
+  margin-inline: auto;
+  max-width: 1300px;
+}
+
+header {
+  background-color: ghostwhite; /* ivory lembut */
+  color: #333;
+}
+
+.main-header {
+  min-height: 90px;
+  padding-block: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+}
+
+.brand-name {
+  font-size: 1.125rem;
+  font-weight: bold;
+  text-decoration: none;
+  color: #333;
+}
+
+.navigation-drawer {
+  min-height: 100vh;
+  width: 200px;
+  padding: 20px 10px;
+  background-color: #fff;
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-shadow: 0 0 4px 2px #00000033;
+  transform: translateX(-100%);
+  transition: transform 350ms;
+  z-index: 9999;
+}
+
+.navigation-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-button {
+  padding: 8px;
+  border: 0;
+  border-radius: 4px;
+  display: inline-block;
+  background-color: transparent;
+  font-weight: bold;
+  font-size: 28px;
+  color: #141e16;
+  cursor: pointer;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px 20px;
+}
+
+.nav-list li a {
+  padding: 6px 10px;
+  display: block;
+  color: #333;
+  text-decoration: none;
+}
+
+.nav-list li a:hover {
+  text-decoration: underline;
+}
+
+/* MAIN */
+.main-content {
+
+}
+
+/* === Skip Link === */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Responsive drawer */
+@media screen and (width > 1000px) {
+  .navigation-drawer {
+    min-height: auto;
+    width: auto;
+    padding: 0;
+    background-color: transparent;
+    flex-direction: row;
+    justify-content: space-between;
+    position: static;
+    box-shadow: none;
+    transform: translateX(0);
+  }
+
+  .nav-list {
+    flex-direction: row;
+  }
+
+  .nav-list li a {
+    display: inline-block;
+  }
+
+  .drawer-button {
+    display: none;
+  }
+}
+
+/* ===== AUTH PAGES (Login & Register) ===== */
+body.login-page {
+  background: linear-gradient(-45deg, #a1c4fd, #c2e9fb, #d4fc79, #96e6a1);
+  background-size: 400% 400%;
+  animation: loginGradientBG 15s ease infinite;
+}
+
+@keyframes loginGradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.auth-container {
+  max-width: 400px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.auth-container img.logo {
+  max-width: 100px;
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.auth-container h1 {
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+  text-align: center;
+  color: var(--primary, #007BFF);
+}
+
+.auth-form,
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-form label,
+form label {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.auth-form input,
+form input {
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.auth-form input:focus,
+form input:focus {
+  outline: none;
+  border-color: var(--primary, #007BFF);
+  box-shadow: 0 0 4px var(--primary, #007BFF);
+}
+
+.auth-form button[type="submit"],
+form button[type="submit"],
+.auth-form button,
+form button {
+  padding: 0.75rem;
+  font-size: 1rem;
+  background: var(--primary, #007BFF);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.auth-form button[type="submit"]:hover,
+form button[type="submit"]:hover,
+.auth-form button:hover,
+form button:hover {
+  opacity: 0.9;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.auth-switch button {
+  background: none;
+  border: none;
+  color: var(--primary, #007BFF);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+#login-status,
+#register-status {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: red;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  width: 100%;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+@media screen and (max-width: 400px) {
+  .auth-container {
+    margin: 2rem 1rem;
+    padding: 1.5rem;
+  }
+}
+
+main {
+  transition: opacity 300ms ease-in-out;
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  margin: 0;
+  color: var(--primary, #007BFF);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.logout-button:hover {
+  opacity: 0.8;
+}
+
+.site-footer {
+  padding: 1rem 0;
+  text-align: center;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* container dengan rasio tetap */
+.detail-image-container {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 4 / 3;
+  margin: 1rem auto;
+  overflow: hidden;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+
+.detail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Story Card */
+.story-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.story-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 200ms;
+}
+.story-card:hover {
+  transform: translateY(-4px);
+}
+
+.story-image-container {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.story-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-card h2 {
+  margin: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.story-card p {
+  margin: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.story-card small {
+  color: #777;
+}
+
+/* === Navbar Styles === */
+/* === Navbar Styles === */
+.navbar {
+  background-color: none;
+  padding: 1rem 2rem;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-container {
+  display: grid;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1024px;
+  margin: auto;
+}
+
+
+.navbar-menu-icon {
+  display: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Navbar links container */
+.navbar-links {
+  display: flex;
+  list-style: none;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+/* Link style */
+.navbar-links li a,
+.logout-button {
+  color: black;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+/* Logout button */
+.logout-button {
+  background: transparent;
+  border: 1px solid #1B1B1C;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  
+  /* Ini bikin logout tombol di paling kanan */
+  margin-left: auto;
+}
+
+.logout-button:hover {
+  background-color: #1B1B1C;
+  color: #3e1e68;
+  font-weight: bold;
+}
+
+/* Responsive untuk max lebar 768px (mobile) */
+@media (max-width: 768px) {
+  .navbar-menu-icon {
+    display: block;
+  }
+
+  /* Navbar links pada mobile: flex kolom, awalnya hidden */
+  .navbar-links {
+    position: absolute;      /* agar bisa overlap */
+    top: 70px;               /* di bawah header */
+    right: 0;
+    background-color: #5c2d91;
+    width: 100%;
+    flex-direction: column;  /* susun kolom */
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    display: none;           /* sembunyikan default */
+  }
+  
+  /* Saat active (menu terbuka) tampilkan flex */
+  .navbar-links.active {
+    display: flex;
+  }
+
+  /* Logout button tetap di normal saat di mobile */
+  .logout-button {
+    margin-left: 0; /* reset margin-left auto supaya tombol logout tidak ngambang */
+    width: 90%;     /* biar tombol logout full width atau bisa diatur */
+    text-align: center;
+  }
+}
+
+/* === End Navbar Styles === */

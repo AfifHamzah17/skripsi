@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css?family=Dosis:300,400,500');
+
+/* Keyframes */
+@keyframes rocket-movement {
+  100% {
+    transform: translate(1200px, -600px);
+  }
+}
+
+@keyframes rotate-astronaut {
+  100% {
+    transform: rotate(-720deg);
+  }
+}
+
+@keyframes move-astronaut {
+  100% {
+    transform: translate(-160px, -160px);
+  }
+}
+
+@keyframes glow-star {
+  40% {
+    opacity: 0.3;
+  }
+  90%, 100% {
+    opacity: 1;
+    transform: scale(1.2);
+    border-radius: 9999px;
+  }
+}
+
+/* Global */
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  font-family: 'Dosis', sans-serif;
+  font-weight: 300;
+  user-select: none;
+}
+
+.bg-purple {
+  background: url("http://salehriaz.com/404Page/img/bg_purple.png");
+  background-repeat: repeat-x;
+  background-size: cover;
+  background-position: left top;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Button */
+.btn-go-home {
+  position: relative;
+  z-index: 200;
+  margin: 20px auto;
+  padding: 10px 20px;
+  border: 1px solid #FFCB39;
+  border-radius: 100px;
+  font-weight: 400;
+  display: block;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  letter-spacing: 2px;
+  font-size: 12px;
+  transition: all 0.3s ease-in;
+  width: fit-content;
+}
+
+.btn-go-home:hover {
+  background-color: #FFCB39;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 20px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Layout */
+.central-body {
+  padding: 15% 5% 10%;
+  text-align: center;
+}
+
+.image-404 {
+  z-index: 100;
+  pointer-events: none;
+  max-width: 100%;
+}
+
+/* Objects */
+.objects img {
+  pointer-events: none;
+  position: absolute;
+  z-index: 90;
+}
+
+.object_rocket {
+  top: 75%;
+  left: 50%;
+  transform: translateX(-50px);
+  animation: rocket-movement 200s linear infinite;
+}
+
+.object_earth {
+  top: 20%;
+  left: 15%;
+}
+
+.object_moon {
+  top: 12%;
+  left: 25%;
+}
+
+.box_astronaut {
+  position: absolute;
+  top: 20%;        /* dari atas ke bawah */
+  left: 55%;       /* sedikit ke kanan dari tengah (50%) */
+  transform: translate(-50%, 0);  /* untuk pastikan posisinya dari tengah */
+  animation: move-astronaut 50s infinite linear alternate,
+             rotate-astronaut 200s infinite linear alternate;
+  z-index: 110;
+}
+.stars {
+  background: url("http://salehriaz.com/404Page/img/overlay_stars.svg");
+  background-repeat: repeat;
+  background-size: contain;
+  background-position: left top;
+}
+
+/* Stars */
+.glowing_stars .star {
+  position: absolute;
+  border-radius: 100%;
+  background-color: #fff;
+  width: 3px;
+  height: 3px;
+  opacity: 0.3;
+}
+
+.glowing_stars .star:nth-child(1) {
+  top: 80%;
+  left: 25%;
+  animation: glow-star 2s infinite ease-in-out alternate 1s;
+}
+.glowing_stars .star:nth-child(2) {
+  top: 20%;
+  left: 40%;
+  animation: glow-star 2s infinite ease-in-out alternate 3s;
+}
+.glowing_stars .star:nth-child(3) {
+  top: 25%;
+  left: 25%;
+  animation: glow-star 2s infinite ease-in-out alternate 5s;
+}
+.glowing_stars .star:nth-child(4) {
+  top: 75%;
+  left: 80%;
+  animation: glow-star 2s infinite ease-in-out alternate 7s;
+}
+.glowing_stars .star:nth-child(5) {
+  top: 90%;
+  left: 50%;
+  animation: glow-star 2s infinite ease-in-out alternate 9s;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .central-body {
+    padding-top: 25%;
+  }
+
+  .box_astronaut {
+    top: 70%;
+    right: 10%;
+    transform: scale(0.8);
+  }
+
+  .object_earth,
+  .object_moon {
+    width: 60px !important;
+  }
+
+  .object_rocket {
+    width: 30px !important;
+  }
+
+  .object_astronaut {
+    width: 100px !important;
+  }
+
+  .btn-go-home {
+    font-size: 10px;
+    padding: 8px 16px;
+  }
+}

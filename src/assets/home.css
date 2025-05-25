@@ -1,0 +1,49 @@
+/* Palet warna seperti 404 page */
+.home-container {
+  background-color: #3e1e68;
+  color: white;
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-card {
+  background-color: #5c2d91;
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 700px;
+  width: 100%;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.home-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.logout-button {
+  background: transparent;
+  border: 1px solid #FFCB39;
+  color: #FFCB39;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.logout-button:hover {
+  background-color: #FFCB39;
+  color: white;
+  transform: scale(1.05);
+}
