@@ -1,0 +1,80 @@
+/* src/components/404-custom.css */
+
+/* Animasi untuk Roket */
+@keyframes move-rocket {
+  0% {
+    transform: translateY(0) translateX(0) rotate(-45deg);
+  }
+  25% {
+    transform: translateY(-30px) translateX(20px) rotate(-45deg);
+  }
+  50% {
+    transform: translateY(20px) translateX(-10px) rotate(-45deg);
+  }
+  75% {
+    transform: translateY(-15px) translateX(-20px) rotate(-45deg);
+  }
+  100% {
+    transform: translateY(0) translateX(0) rotate(-45deg);
+  }
+}
+.object_rocket {
+  animation: move-rocket 15s infinite ease-in-out;
+}
+
+/* Animasi untuk Bumi yang berputar */
+@keyframes spin-earth {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.object_earth {
+  animation: spin-earth 20s infinite linear;
+}
+
+/* Animasi untuk Bulan yang mengorbit Bumi */
+@keyframes orbit-moon {
+  from {
+    transform: rotate(0deg) translateX(60px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(60px) rotate(-360deg);
+  }
+}
+.object_moon {
+  animation: orbit-moon 10s infinite linear;
+  transform-origin: -30px center; /* Menyesuaikan titik poros */
+}
+
+/* Animasi untuk Kotak Astronot yang melayang */
+@keyframes float-astronaut {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  66% {
+    transform: translateY(10px) translateX(-10px);
+  }
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+}
+.box_astronaut {
+  animation: float-astronaut 8s infinite ease-in-out;
+}
+
+/* Khusus untuk delay animasi bintang */
+.animate-ping.animation-delay-200 {
+  animation-delay: 200ms;
+}
+.animate-ping.animation-delay-400 {
+  animation-delay: 400ms;
+}
+.animate-ping.animation-delay-600 {
+  animation-delay: 600ms;
+}

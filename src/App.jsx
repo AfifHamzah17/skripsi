@@ -1,9 +1,12 @@
+// src/App.jsx
 import React, { useEffect, useState } from "react";
 import Router from "./routes/router";
 import Navbar from "./components/navbar/navbar";
 import "../src/style.css";
+import { AuthProvider, useAuth } from "./Context/AuthContext";
 
-export default function App() {
+function AppContent() {
+  const { user, logout, loading, isAuthenticated } = useAuth();
   const [routeHash, setRouteHash] = useState(
     window.location.hash.startsWith("#/") ? window.location.hash : "#/home"
   );
@@ -20,11 +23,20 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     window.location.hash = "#/login";
   };
 
   const isAuthPage = routeHash.includes("login") || routeHash.includes("register");
+
+  // Tampilkan loading saat memeriksa autentikasi
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,17 +44,25 @@ export default function App() {
         Skip to main content
       </a>
 
-      {!isAuthPage && (
+      {!isAuthPage && isAuthenticated && user && (
         <header className="bg-white shadow">
           <div className="container main-header">
-            <Navbar onLogout={handleLogout} />
+            <Navbar onLogout={handleLogout} user={user} />
           </div>
         </header>
       )}
 
       <main id="main-content" className="main-content">
-        <Router key={routeHash} />
+        <Router key={routeHash} user={user} isAuthenticated={isAuthenticated} />
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
