@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { FaBook, FaSave, FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../../Context/AuthContext";
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
 
 export default function PilihMapelView() {
   const { user, refreshMapelData } = useAuth();

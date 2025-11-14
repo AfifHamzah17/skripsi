@@ -56,10 +56,10 @@ export const AuthProvider = ({ children }) => {
   // Fungsi untuk mengecek apakah guru sudah memiliki mapel
   const checkTeacherMapel = async (token) => {
     if (!token) return;
-    
+
     setCheckingMapel(true);
     try {
-      const response = await fetch('http://localhost:3000/api/teachers/mapel', {
+      const response = await fetch('https://skripsi-api-995782183824.asia-southeast2.run.app/api/teachers/mapel', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

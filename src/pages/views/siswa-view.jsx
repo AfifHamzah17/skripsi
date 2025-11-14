@@ -94,9 +94,9 @@ export default function SiswaView() {
 
       try {
         const token = localStorage.getItem('token');
-        const url = `http://localhost:3000/api/teachers/mapel/${selectedMapel}`;
+        const url = `https://skripsi-api-995782183824.asia-southeast2.run.app/api/teachers/mapel/${selectedMapel}`;
         console.log("Fetching URL:", url);
-        
+
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -208,13 +208,14 @@ export default function SiswaView() {
     approvedPeminjaman: peminjamans.filter(p => p.status === 'disetujui').length,
   };
 
-  // Status badge component
+  // Status badge component - SUDAH DIPERBAIKI
   const StatusBadge = ({ status }) => {
     const statusConfig = {
       pending: { color: 'bg-yellow-100 text-yellow-800', icon: <FaClock className="mr-1" />, text: 'Pending' },
       disetujui: { color: 'bg-green-100 text-green-800', icon: <FaCheckCircle className="mr-1" />, text: 'Disetujui' },
       ditolak: { color: 'bg-red-100 text-red-800', icon: <FaTimesCircle className="mr-1" />, text: 'Ditolak' },
       dikembalikan: { color: 'bg-blue-100 text-blue-800', icon: <FaCheckCircle className="mr-1" />, text: 'Dikembalikan' },
+      kembali: { color: 'bg-blue-100 text-blue-800', icon: <FaCheckCircle className="mr-1" />, text: 'Dikembalikan' }, // DITAMBAHKAN
     };
     
     const config = statusConfig[status] || statusConfig.pending;

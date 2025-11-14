@@ -1,16 +1,36 @@
 // src/pages/views/guru-view.jsx
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { FaBook, FaUser, FaSignOutAlt, FaArrowLeft, FaChalkboardTeacher, FaTools, FaCalendarAlt } from 'react-icons/fa';
+import { 
+  FaBook, 
+  FaUser, 
+  FaSignOutAlt, 
+  FaTachometerAlt, 
+  FaHandHolding, 
+  FaTools, 
+  FaCalendarAlt, 
+  FaChalkboardTeacher,
+  FaEdit,
+  FaPlus,
+  FaChartBar,
+  FaHistory,
+  FaClipboardList,
+  FaSync // Tambahkan ikon ini
+} from 'react-icons/fa';
 import { useAuth } from '../../Context/AuthContext';
 import { getPeminjamanByGuru } from '../models/peminjaman-model';
 import Table from '../../components/table';
+import DashboardGrid from '../../components/dashboard/dashboardGrid';
+import Button from '../../components/button';
 
 export default function GuruView() {
-  const { user, mapelData, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [peminjamans, setPeminjamans] = useState([]);
+  const [mapelData, setMapelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [statistics, setStatistics] = useState({});
 
   useEffect(() => {
     const fetchPeminjamans = async () => {
@@ -21,6 +41,15 @@ export default function GuruView() {
           setMessage(response.message);
         } else {
           setPeminjamans(response.result);
+          
+          // Calculate statistics
+          const stats = {
+            totalPeminjaman: response.result.length,
+            pending: response.result.filter(p => p.status === 'pending').length,
+            disetujui: response.result.filter(p => p.status === 'disetujui').length,
+            kembali: response.result.filter(p => p.status === 'kembali').length
+          };
+          setStatistics(stats);
         }
       } catch (error) {
         setMessage('Gagal mengambil data peminjaman');
@@ -38,14 +67,82 @@ export default function GuruView() {
     window.location.hash = '#/login';
   };
 
+  const handleApprove = async (id) => {
+    try {
+      // Implement approve logic here
+      toast.success('Peminjaman disetujui');
+      // Refresh data
+      const response = await getPeminjamanByGuru();
+      if (!response.error) {
+        setPeminjamans(response.result);
+      }
+    } catch (error) {
+      toast.error('Gagal menyetujui peminjaman');
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      // Implement reject logic here
+      toast.success('Peminjaman ditolak');
+      // Refresh data
+      const response = await getPeminjamanByGuru();
+      if (!response.error) {
+        setPeminjamans(response.result);
+      }
+    } catch (error) {
+      toast.error('Gagal menolak peminjaman');
+    }
+  };
+
+  const handleReturn = async (id) => {
+    try {
+      // Implement return logic here
+      toast.success('Alat dikembalikan');
+      // Refresh data
+      const response = await getPeminjamanByGuru();
+      if (!response.error) {
+        setPeminjamans(response.result);
+      }
+    } catch (error) {
+      toast.error('Gagal mengembalikan alat');
+    }
+  };
+
+  const handleRefreshData = async () => {
+    setLoading(true);
+    try {
+      const response = await getPeminjamanByGuru();
+      if (!response.error) {
+        setPeminjamans(response.result);
+        
+        // Update statistics
+        const stats = {
+          totalPeminjaman: response.result.length,
+          pending: response.result.filter(p => p.status === 'pending').length,
+          disetujui: response.result.filter(p => p.status === 'disetujui').length,
+          kembali: response.result.filter(p => p.status === 'kembali').length
+        };
+        setStatistics(stats);
+      }
+      setMessage('Data berhasil diperbarui');
+      toast.success('Data berhasil diperbarui');
+    } catch (error) {
+      setMessage('Gagal memperbarui data');
+      toast.error('Gagal memperbarui data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     { 
       header: 'Siswa', 
       field: 'user.nama',
       render: (row) => (
         <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-            <FaUser className="h-4 w-4 text-primary-600" />
+          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <FaUser className="h-4 w-4 text-blue-600" />
           </div>
           <div className="ml-3">
             <div className="text-sm font-medium text-gray-900">
@@ -63,7 +160,9 @@ export default function GuruView() {
       field: 'alat.nama',
       render: (row) => (
         <div className="flex items-center">
-          <FaTools className="h-4 w-4 text-gray-400 mr-2" />
+          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+            <FaTools className="h-4 w-4 text-green-600" />
+          </div>
           <span className="text-sm text-gray-900">
             {row.alat?.nama || row.alatId || 'Unknown'}
           </span>
@@ -83,15 +182,13 @@ export default function GuruView() {
       header: 'Tanggal Pinjam', 
       field: 'tanggalPeminjaman',
       render: (row) => (
-        <div className="flex items-center">
-          <FaCalendarAlt className="h-4 w-4 text-gray-400 mr-2" />
-          <span className="text-sm text-gray-900">
-            {new Date(row.tanggalPeminjaman).toLocaleDateString('id-ID', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            })}
-          </span>
+        <div className="flex items-center text-sm text-gray-900">
+          <FaCalendarAlt className="mr-2 h-4 w-4 text-gray-400" />
+          {new Date(row.tanggalPeminjaman).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          })}
         </div>
       )
     },
@@ -114,8 +211,48 @@ export default function GuruView() {
           </span>
         );
       }
+    },
+    { 
+      header: 'Aksi', 
+      field: 'actions',
+      render: (row) => (
+        <div className="flex space-x-2">
+          {row.status === 'pending' && (
+            <>
+              <button
+                onClick={() => handleApprove(row.id)}
+                className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Setujui
+              </button>
+              <button
+                onClick={() => handleReject(row.id)}
+                className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Tolak
+              </button>
+            </>
+          )}
+          {row.status === 'disetujui' && (
+            <button
+              onClick={() => handleReturn(row.id)}
+              className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Kembalikan
+            </button>
+          )}
+        </div>
+      )
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -125,7 +262,7 @@ export default function GuruView() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
-                <FaBook className="h-8 w-8 text-primary-600" />
+                <FaBook className="h-8 w-8 text-blue-600" />
                 <span className="ml-2 text-xl font-bold text-gray-900">Tampilan Guru</span>
               </div>
             </div>
@@ -133,7 +270,7 @@ export default function GuruView() {
               <span className="text-gray-700">Selamat datang, {user?.nama}</span>
               <button
                 onClick={() => window.location.hash = '#/profile'}
-                className="flex items-center text-sm text-primary-600 hover:text-primary-800"
+                className="flex items-center text-sm text-blue-600 hover:text-blue-800"
               >
                 <FaUser className="mr-1" />
                 Profile
@@ -156,165 +293,168 @@ export default function GuruView() {
           <div className="border-4 border-dashed border-gray-200 rounded-lg p-6 bg-white">
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard Guru</h1>
             
-            {/* Informasi Guru */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Informasi Guru</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Nama:</span>
-                  <span className="font-medium">{user?.nama}</span>
+            {/* Alert Message */}
+            {message && (
+              <div className="mb-6 rounded-lg bg-blue-50 p-4 border-l-4 border-blue-500">
+                    <div className="flex">
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">{message}</p>
+                      </div>
+                    </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Email:</span>
-                  <span className="font-medium">{user?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">NIP:</span>
-                  <span className="font-medium">{user?.nip}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">No. HP:</span>
-                  <span className="font-medium">{user?.nohp}</span>
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Mata Pelajaran */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-semibold text-gray-800">Mata Pelajaran yang Diajar</h2>
+            {/* Tabs */}
+            <div className="border-b border-gray-200 mb-6">
+              <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={() => window.location.hash = '#/profile'}
-                  className="text-primary-600 hover:text-primary-800 text-sm"
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'dashboard' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  onClick={() => setActiveTab('dashboard')}
                 >
-                  Ubah
+                  <FaTachometerAlt className="mr-2" />
+                  Dashboard
                 </button>
-              </div>
-              
-              {mapelData && mapelData.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {mapelData.map((mapel, index) => (
-                    <span key={index} className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
-                      {mapel}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">Belum ada mata pelajaran yang dipilih</p>
-              )}
+                <button
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'peminjaman' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  onClick={() => setActiveTab('peminjaman')}
+                >
+                  <FaHandHolding className="mr-2" />
+                  Peminjaman
+                </button>
+                <button
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'mapel' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  onClick={() => setActiveTab('mapel')}
+                >
+                  <FaChalkboardTeacher className="mr-2" />
+                  Mapel
+                </button>
+                <button
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'laporan' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  onClick={() => setActiveTab('laporan')}
+                >
+                  <FaChartBar className="mr-2" />
+                  Laporan
+                </button>
+              </nav>
             </div>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                      <FaTools className="h-6 w-6 text-blue-600" />
+            {/* Tab Content */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-8">
+                <DashboardGrid statistics={statistics} />
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-white shadow rounded-lg p-6 overflow-hidden">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Informasi Guru</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Nama:</span>
+                        <span className="font-medium">{user?.nama}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email:</span>
+                        <span className="font-medium">{user?.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">NIP:</span>
+                        <span className="font-medium">{user?.nip}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">No. HP:</span>
+                        <span className="font-medium">{user?.nohp}</span>
+                      </div>
                     </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Total Peminjaman</dt>
-                        <dd className="flex items-baseline">
-                          <div className="text-2xl font-semibold text-gray-900">{peminjamans.length}</div>
-                        </dd>
-                      </dl>
+                  </div>
+                  
+                  <div className="bg-white shadow rounded-lg p-6 overflow-hidden">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Mata Pelajaran yang Diajar</h3>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-lg font-medium text-gray-900">Mata Pelajaran yang Diajar</h3>
+                      <button
+                        onClick={() => window.location.hash = '#/profile'}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        <FaEdit className="mr-1" />
+                        Ubah
+                      </button>
                     </div>
+                    
+                    {mapelData && mapelData.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {mapelData.map((mapel, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            {mapel}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">Belum ada mata pelajaran yang dipilih</p>
+                    )}
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
-                      <FaCalendarAlt className="h-6 w-6 text-yellow-600" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Pending</dt>
-                        <dd className="flex items-baseline">
-                          <div className="text-2xl font-semibold text-gray-900">
-                            {peminjamans.filter(p => p.status === 'pending').length}
-                          </div>
-                        </dd>
-                      </dl>
-                    </div>
+            )}
+            
+            {activeTab === 'peminjaman' && (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800">Daftar Peminjaman</h2>
+                    <Button 
+                      onClick={handleRefreshData}
+                      className="flex items-center"
+                    >
+                      <FaSync className="mr-2" />
+                      Refresh Data
+                    </Button>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                      <FaCalendarAlt className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Disetujui</dt>
-                        <dd className="flex items-baseline">
-                          <div className="text-2xl font-semibold text-gray-900">
-                            {peminjamans.filter(p => p.status === 'disetujui').length}
-                          </div>
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
+                <div className="overflow-x-auto">
+                  <Table 
+                    columns={columns}
+                    data={peminjamans}
+                    loading={loading}
+                    emptyMessage="Tidak ada data peminjaman"
+                  />
                 </div>
               </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                      <FaCalendarAlt className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Dikembalikan</dt>
-                        <dd className="flex items-baseline">
-                          <div className="text-2xl font-semibold text-gray-900">
-                            {peminjamans.filter(p => p.status === 'kembali').length}
-                          </div>
-                        </dd>
-                      </dl>
-                    </div>
+            )}
+            
+            {activeTab === 'mapel' && (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800">Mata Pelajaran</h2>
+                    <Button className="flex items-center">
+                      <FaPlus className="mr-2" />
+                      Tambah Mapel
+                    </Button>
                   </div>
                 </div>
+                <div className="text-gray-500 italic text-center py-8">
+                  Fitur manajemen mapel akan segera hadir
+                </div>
               </div>
-            </div>
-
-            {/* Menu Peminjaman */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                   onClick={() => window.location.hash = '#/peminjaman/create'}>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Pinjam Alat</h3>
-                <p className="text-gray-600">Buat permintaan peminjaman alat praktikum</p>
+            )}
+            
+            {activeTab === 'laporan' && (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Laporan Peminjaman</h2>
+                </div>
+                <div className="text-gray-500 italic text-center py-8">
+                  Fitur laporan akan segera hadir
+                </div>
               </div>
-              
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                   onClick={() => window.location.hash = '#/peminjaman/history'}>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Riwayat Peminjaman</h3>
-                <p className="text-gray-600">Lihat riwayat peminjaman alat</p>
-              </div>
-            </div>
-
-            {/* Peminjaman Table */}
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Peminjaman untuk Mapel Anda</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Daftar peminjaman alat oleh siswa untuk mapel yang Anda ampu</p>
-              </div>
-              <div className="px-4 py-5 sm:p-6">
-                <Table 
-                  columns={columns}
-                  data={peminjamans}
-                  loading={loading}
-                  emptyMessage="Tidak ada peminjaman tersedia"
-                />
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -137,7 +137,7 @@ export default function PetugasView() {
   const fetchGuruList = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/teachers', {
+      const response = await fetch('https://skripsi-api-995782183824.asia-southeast2.run.app/api', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -611,15 +611,16 @@ export default function PetugasView() {
                                 })}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  peminjaman.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  peminjaman.status === 'disetujui' ? 'bg-green-100 text-green-800' :
-                                  peminjaman.status === 'ditolak' ? 'bg-red-100 text-red-800' :
-                                  peminjaman.status === 'kembali' ? 'bg-blue-100 text-blue-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {peminjaman.status}
-                                </span>
+<span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+  peminjaman.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+  peminjaman.status === 'disetujui' ? 'bg-green-100 text-green-800' :
+  peminjaman.status === 'ditolak' ? 'bg-red-100 text-red-800' :
+  peminjaman.status === 'kembali' ? 'bg-blue-100 text-blue-800' : // Tambahkan ini
+  peminjaman.status === 'dikembalikan' ? 'bg-blue-100 text-blue-800' :
+  'bg-gray-100 text-gray-800'
+}`}>
+  {peminjaman.status === 'kembali' ? 'Dikembalikan' : peminjaman.status} // Tampilkan "Dikembalikan" untuk status "kembali"
+</span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 {peminjaman.status === 'pending' && (

@@ -1,5 +1,6 @@
 // src/pages/models/auth-model.js
-const API_BASE = 'http://localhost:3000/api';
+// const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
 
 export const registerUser = async (formData) => {
   try {
