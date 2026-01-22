@@ -1,3 +1,4 @@
+// src/components/table.jsx
 import React from 'react';
 
 const Table = ({ 
@@ -8,6 +9,9 @@ const Table = ({
   emptyMessage = 'Tidak ada data tersedia',
   className = '' 
 }) => {
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+  
   // Fungsi helper untuk render cell dengan aman
   const renderCell = (column, row) => {
     const value = row[column.field];
@@ -64,21 +68,20 @@ const Table = ({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {data.length === 0 ? (
+          {safeData.length === 0 ? (
             <tr>
               <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-12 text-center text-sm text-gray-500">
                 <div className="flex flex-col items-center">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002 2 2c.55 0 1 .45 0 1 1 1 0 .45 1 1 1h10a2 2 0 002 0 2-2 2V7a2 2 0 00-2-2-2H7a2 2 0 00-2-2-2" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15l-2 2M2 19l2-2m0 0h6m0 6h6m-6 0a6 6 0 0 1-1-1V9a2 2 0 00-2-2-2H8a2 2 0 00-2-2-2" />
-                  </svg>
+<svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+</svg>
                   <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
                   <p className="mt-1 text-sm text-gray-500">{emptyMessage}</p>
                 </div>
               </td>
             </tr>
           ) : (
-            data.map((row, rowIndex) => (
+            safeData.map((row, rowIndex) => (
               <tr key={rowIndex} className="hover:bg-gray-50 transition-colors duration-150">
                 {columns.map((column, colIndex) => (
                   <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

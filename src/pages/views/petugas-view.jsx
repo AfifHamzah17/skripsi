@@ -496,13 +496,6 @@ export default function PetugasView() {
                 <FaUser className="mr-1" />
                 Profile
               </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center text-sm text-red-600 hover:text-red-800"
-              >
-                <FaSignOutAlt className="mr-1" />
-                Logout
-              </button>
             </div>
           </div>
         </div>
@@ -619,7 +612,7 @@ export default function PetugasView() {
   peminjaman.status === 'dikembalikan' ? 'bg-blue-100 text-blue-800' :
   'bg-gray-100 text-gray-800'
 }`}>
-  {peminjaman.status === 'kembali' ? 'Dikembalikan' : peminjaman.status} // Tampilkan "Dikembalikan" untuk status "kembali"
+  {peminjaman.status === 'kembali' ? 'Dikembalikan' : peminjaman.status}
 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

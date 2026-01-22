@@ -15,7 +15,7 @@ import {
   FaChartBar,
   FaHistory,
   FaClipboardList,
-  FaSync // Tambahkan ikon ini
+  FaSync
 } from 'react-icons/fa';
 import { useAuth } from '../../Context/AuthContext';
 import { getPeminjamanByGuru } from '../models/peminjaman-model';
@@ -24,9 +24,9 @@ import DashboardGrid from '../../components/dashboard/dashboardGrid';
 import Button from '../../components/button';
 
 export default function GuruView() {
-  const { user, logout } = useAuth();
+  // Get mapelData from useAuth context
+  const { user, logout, mapelData } = useAuth();
   const [peminjamans, setPeminjamans] = useState([]);
-  const [mapelData, setMapelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -40,26 +40,28 @@ export default function GuruView() {
         if (response.error) {
           setMessage(response.message);
         } else {
-          setPeminjamans(response.result);
+          setPeminjamans(response.result || []);
           
           // Calculate statistics
+          const data = response.result || [];
           const stats = {
-            totalPeminjaman: response.result.length,
-            pending: response.result.filter(p => p.status === 'pending').length,
-            disetujui: response.result.filter(p => p.status === 'disetujui').length,
-            kembali: response.result.filter(p => p.status === 'kembali').length
+            totalPeminjaman: data.length,
+            pending: data.filter(p => p.status === 'pending').length,
+            disetujui: data.filter(p => p.status === 'disetujui').length,
+            kembali: data.filter(p => p.status === 'kembali').length
           };
           setStatistics(stats);
         }
       } catch (error) {
         setMessage('Gagal mengambil data peminjaman');
+        console.error('Error fetching peminjaman:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPeminjamans();
-  }, []);
+  }, []); // Only run once on component mount
 
   const handleLogout = () => {
     logout();
@@ -69,12 +71,12 @@ export default function GuruView() {
 
   const handleApprove = async (id) => {
     try {
-      // Implement approve logic here
+      // Placeholder for approve logic
       toast.success('Peminjaman disetujui');
       // Refresh data
       const response = await getPeminjamanByGuru();
       if (!response.error) {
-        setPeminjamans(response.result);
+        setPeminjamans(response.result || []);
       }
     } catch (error) {
       toast.error('Gagal menyetujui peminjaman');
@@ -83,12 +85,12 @@ export default function GuruView() {
 
   const handleReject = async (id) => {
     try {
-      // Implement reject logic here
+      // Placeholder for reject logic
       toast.success('Peminjaman ditolak');
       // Refresh data
       const response = await getPeminjamanByGuru();
       if (!response.error) {
-        setPeminjamans(response.result);
+        setPeminjamans(response.result || []);
       }
     } catch (error) {
       toast.error('Gagal menolak peminjaman');
@@ -97,12 +99,12 @@ export default function GuruView() {
 
   const handleReturn = async (id) => {
     try {
-      // Implement return logic here
+      // Placeholder for return logic
       toast.success('Alat dikembalikan');
       // Refresh data
       const response = await getPeminjamanByGuru();
       if (!response.error) {
-        setPeminjamans(response.result);
+        setPeminjamans(response.result || []);
       }
     } catch (error) {
       toast.error('Gagal mengembalikan alat');
@@ -114,17 +116,19 @@ export default function GuruView() {
     try {
       const response = await getPeminjamanByGuru();
       if (!response.error) {
-        setPeminjamans(response.result);
+        const data = response.result || [];
+        setPeminjamans(data);
         
         // Update statistics
         const stats = {
-          totalPeminjaman: response.result.length,
-          pending: response.result.filter(p => p.status === 'pending').length,
-          disetujui: response.result.filter(p => p.status === 'disetujui').length,
-          kembali: response.result.filter(p => p.status === 'kembali').length
+          totalPeminjaman: data.length,
+          pending: data.filter(p => p.status === 'pending').length,
+          disetujui: data.filter(p => p.status === 'disetujui').length,
+          kembali: data.filter(p => p.status === 'kembali').length
         };
         setStatistics(stats);
       }
+      
       setMessage('Data berhasil diperbarui');
       toast.success('Data berhasil diperbarui');
     } catch (error) {
@@ -375,7 +379,6 @@ export default function GuruView() {
                   </div>
                   
                   <div className="bg-white shadow rounded-lg p-6 overflow-hidden">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Mata Pelajaran yang Diajar</h3>
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="text-lg font-medium text-gray-900">Mata Pelajaran yang Diajar</h3>
                       <button
@@ -433,14 +436,36 @@ export default function GuruView() {
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold text-gray-800">Mata Pelajaran</h2>
-                    <Button className="flex items-center">
+                    <Button 
+                      onClick={() => window.location.hash = '#/profile'}
+                      className="flex items-center"
+                    >
                       <FaPlus className="mr-2" />
-                      Tambah Mapel
+                      Kelola Mapel
                     </Button>
                   </div>
                 </div>
-                <div className="text-gray-500 italic text-center py-8">
-                  Fitur manajemen mapel akan segera hadir
+                <div className="p-6">
+                  {mapelData && mapelData.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {mapelData.map((mapel, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                          <h3 className="font-medium text-gray-900">{mapel}</h3>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 italic mb-4">Belum ada mata pelajaran yang dipilih</p>
+                      <Button 
+                        onClick={() => window.location.hash = '#/profile'}
+                        className="flex items-center mx-auto"
+                      >
+                        <FaPlus className="mr-2" />
+                        Tambah Mapel
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
