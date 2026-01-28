@@ -1,5 +1,6 @@
 // src/Context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { checkTeacherMapel as checkTeacherMapelModel } from '../pages/models/teacher-model';
 
 const AuthContext = createContext();
 
@@ -17,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasMapel, setHasMapel] = useState(null); // null: belum dicek, true: sudah, false: belum
   const [checkingMapel, setCheckingMapel] = useState(false);
-  const [mapelData, setMapelData] = useState([]); // Simpan data mapel guru
+  const [mapelData, setMapelData] = useState([]); 
 
   useEffect(() => {
     const checkAuth = () => {
@@ -34,7 +35,10 @@ export const AuthProvider = ({ children }) => {
             
             // Jika role guru, cek apakah sudah punya mapel
             if (parsedUser.role === 'guru') {
-              checkTeacherMapel(token);
+              checkTeacherMapelStatus(token);
+            } else {
+                // If not guru, no need to check mapel
+                setCheckingMapel(false);
             }
           } else {
             localStorage.removeItem('user');
@@ -53,26 +57,27 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Fungsi untuk mengecek apakah guru sudah memiliki mapel
-  const checkTeacherMapel = async (token) => {
+  const checkTeacherMapelStatus = async (token) => {
     if (!token) return;
 
     setCheckingMapel(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/api/teachers/mapel`, {
-          headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Call the model function
+      const result = await checkTeacherMapelModel();
 
-      if (response.ok) {
-        const data = await response.json();
-        setHasMapel(data.hasMapel);
-        if (data.hasMapel && data.mapel) {
-          setMapelData(data.mapel);
-        }
-      } else {
+      if (result.error) {
+        // Log warning but allow user to proceed
+        console.warn("Mapel check returned error (403/404 treated as no mapel):", result.message);
+        // Assume false so they can go to the selection page
         setHasMapel(false);
+      } else {
+        // Success
+        setHasMapel(result.hasMapel);
+        if (result.hasMapel && result.mapel) {
+          setMapelData(result.mapel);
+        } else {
+          setMapelData([]);
+        }
       }
     } catch (error) {
       console.error('Error checking teacher mapel:', error);
@@ -95,13 +100,12 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
       
-      // Reset hasMapel saat login, akan dicek ulang
+      // Reset hasMapel saat login
       setHasMapel(null);
       setMapelData([]);
       
-      // Jika role guru, cek apakah sudah punya mapel
       if (userData.role === 'guru') {
-        checkTeacherMapel(userData.token);
+        checkTeacherMapelStatus(userData.token);
       }
     } catch (error) {
       console.error('Error saving user data to localStorage:', error);
@@ -122,11 +126,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Fungsi untuk refresh data mapel
   const refreshMapelData = async () => {
     const token = localStorage.getItem('token');
     if (token && user && user.role === 'guru') {
-      await checkTeacherMapel(token);
+      await checkTeacherMapelStatus(token);
     }
   };
 
@@ -142,7 +145,9 @@ export const AuthProvider = ({ children }) => {
     refreshMapelData
   };
 
-  if (loading || checkingMapel) {
+  // Show loading spinner only if initial auth loading is happening
+  // Do NOT block UI if checkingMapel is true (allows user to see page while checking)
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
