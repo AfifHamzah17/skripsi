@@ -59,8 +59,8 @@ export const AuthProvider = ({ children }) => {
 
     setCheckingMapel(true);
     try {
-      const response = await fetch('https://skripsi-api-995782183824.asia-southeast2.run.app/api/teachers/mapel', {
-        headers: {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE}/api/teachers/mapel`, {
+          headers: {
           Authorization: `Bearer ${token}`,
         },
       });

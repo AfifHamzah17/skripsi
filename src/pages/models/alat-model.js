@@ -1,7 +1,8 @@
 // src/pages/models/alat-model.js
 
 // const API_BASE = 'http://localhost:3000/api';
-const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
+const API_BASE = import.meta.env.VITE_API_BASE;
+// const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
 
 export const getAlat = async () => {
   const token = localStorage.getItem('token');

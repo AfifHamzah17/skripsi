@@ -1,7 +1,7 @@
 // src/pages/models/peminjaman-model.js
 // const API_BASE = 'http://localhost:3000/api';
-const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
-
+// const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
+const API_BASE = import.meta.env.VITE_API_BASE;
 // Fungsi untuk membuat peminjaman baru
 export const createPeminjaman = async (data) => {
   const token = localStorage.getItem('token');
@@ -192,6 +192,20 @@ export const deletePeminjaman = async (id) => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+  return response.json();
+};
+
+// Fungsi untuk mengedit peminjaman (Update jumlah atau mapel)
+export const editPeminjaman = async (id, data) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE}/peminjaman/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
   });
   return response.json();
 };
