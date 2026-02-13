@@ -12,10 +12,21 @@ const cleanUrl = (base, path) => {
 
 export const getPeminjamanByGuru = async () => {
   const token = localStorage.getItem('token');
-  const response = await fetch(cleanUrl(API_BASE, 'peminjaman/guru'), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.json();
+  try {
+    const response = await fetch(cleanUrl(API_BASE, 'peminjaman/guru'), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store' // <--- TAMBAHKAN INI untuk memaksa bypass cache browser
+    });
+
+    if (!response.ok) {
+      // Handle error
+      return { error: true, message: 'Server error' };
+    }
+    
+    return response.json();
+  } catch (error) {
+    return { error: true, message: 'Network error' };
+  }
 };
 
 // Fungsi untuk membuat peminjaman baru

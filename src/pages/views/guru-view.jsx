@@ -2,12 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { 
   FaBook, FaUser, FaSignOutAlt, FaTachometerAlt, FaHandHolding, FaTools, 
-  FaCalendarAlt, FaChalkboardTeacher, FaSync, FaCheckCircle, 
-  FaTimesCircle, FaArrowLeft, FaPlus, FaChartPie 
+  FaCalendarAlt, FaChalkboardTeacher, FaSync, FaChartPie, FaPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../Context/AuthContext';
 import { getPeminjamanByGuru } from '../models/peminjaman-model';
-import Table from '../../components/table';
 import DashboardGrid from '../../components/dashboard/dashboardGrid';
 import Button from '../../components/button';
 
@@ -31,8 +29,6 @@ export default function GuruView() {
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [statistics, setStatistics] = useState({});
-  
-  // Filter status di tab peminjaman
   const [statusFilter, setStatusFilter] = useState('all'); 
 
   useEffect(() => {
@@ -42,7 +38,6 @@ export default function GuruView() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Panggil API yang sudah difilter berdasarkan ID Guru login
       const response = await getPeminjamanByGuru();
       
       if (response.error) {
@@ -51,9 +46,11 @@ export default function GuruView() {
         setStatistics({}); 
       } else {
         const data = response.result || [];
+        console.log("=== DATA DITERIMA DI FRONTEND ===");
+        console.log(JSON.stringify(data, null, 2)); 
+        
         setPeminjamans(data);
         
-        // 1. Hitung Statistik Dasar
         const stats = {
           totalPeminjaman: data.length,
           pending: data.filter(p => p.status === 'pending').length,
@@ -62,8 +59,6 @@ export default function GuruView() {
           ditolak: data.filter(p => p.status === 'ditolak').length,
         };
 
-        // 2. Hitung Statistik per Mapel (Logika Tracking)
-        // Loop melalui data peminjaman yang sudah difilter, hitung frekuensi mapelnya
         const mapelStats = {};
         data.forEach(p => {
           if (p.mapel) {
@@ -82,34 +77,18 @@ export default function GuruView() {
     }
   };
 
-  // --- DATA PROCESSING UNTUK CHART ---
   const chartData = useMemo(() => {
     const labels = Object.keys(statistics.mapelStats || {});
     const counts = Object.values(statistics.mapelStats || {});
 
     return {
       labels,
-      datasets: [
-        {
-          label: 'Jumlah Peminjaman',
-          data: counts,
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.7)', 
-            'rgba(16, 185, 129, 0.7)', 
-            'rgba(245, 158, 11, 0.7)', 
-            'rgba(239, 68, 68, 0.7)',  
-            'rgba(139, 92, 246, 0.7)', 
-          ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(239, 68, 68, 1)',
-            'rgba(139, 92, 246, 1)',
-          ],
-          borderWidth: 1,
-        },
-      ],
+      datasets: [{
+        label: 'Jumlah Peminjaman',
+        data: counts,
+        backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(139, 92, 246, 0.7)'],
+        borderWidth: 1,
+      }],
     };
   }, [statistics.mapelStats]);
 
@@ -119,162 +98,15 @@ export default function GuruView() {
     window.location.hash = '#/login';
   };
 
-  const handleApprove = async (id) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/peminjaman/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: 'disetujui' })
-      });
-      const data = await res.json();
-      if(data.error) throw new Error(data.message);
-      
-      toast.success('Peminjaman disetujui');
-      fetchDashboardData();
-    } catch (error) {
-      toast.error(error.message || 'Gagal menyetujui');
-    }
-  };
-
-  const handleReject = async (id) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/peminjaman/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: 'ditolak' })
-      });
-      const data = await res.json();
-      if(data.error) throw new Error(data.message);
-
-      toast.success('Peminjaman ditolak');
-      fetchDashboardData();
-    } catch (error) {
-      toast.error(error.message || 'Gagal menolak');
-    }
-  };
-
-  const handleReturn = async (id) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/peminjaman/${id}/return`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
-      if(data.error) throw new Error(data.message);
-
-      toast.success('Alat dikembalikan');
-      fetchDashboardData();
-    } catch (error) {
-      toast.error(error.message || 'Gagal mengembalikan');
-    }
-  };
-
   const handleRefreshData = () => {
     fetchDashboardData();
     toast.success('Data berhasil diperbarui');
   };
 
-  // Filter data berdasarkan tab peminjaman
   const filteredPeminjamans = peminjamans.filter(p => {
     if (statusFilter === 'all') return true;
     return p.status === statusFilter;
   });
-
-  const columns = [
-    { 
-      header: 'Siswa', 
-      field: 'user.nama',
-      render: (row) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <FaUser className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">{row.user?.nama || 'Unknown'}</div>
-            <div className="text-xs text-gray-500">{row.user?.kelas || '-'}</div>
-          </div>
-        </div>
-      )
-    },
-    { 
-      header: 'Mapel', 
-      field: 'mapel',
-      render: (row) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-          {row.mapel}
-        </span>
-      )
-    },
-    { 
-      header: 'Alat', 
-      field: 'alat.nama',
-      render: (row) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-            <FaTools className="h-4 w-4 text-green-600" />
-          </div>
-          <span className="text-sm text-gray-900 ml-2">{row.alat?.nama || row.alatId || 'Unknown'}</span>
-        </div>
-      )
-    },
-    { 
-      header: 'Tanggal', 
-      field: 'tanggalPeminjaman',
-      render: (row) => (
-        <div className="flex items-center text-sm text-gray-900">
-          <FaCalendarAlt className="mr-2 h-4 w-4 text-gray-400" />
-          {new Date(row.tanggalPeminjaman).toLocaleDateString('id-ID')}
-        </div>
-      )
-    },
-    { 
-      header: 'Status', 
-      field: 'status',
-      render: (row) => {
-        const statusConfig = {
-          pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
-          disetujui: { color: 'bg-green-100 text-green-800', text: 'Disetujui' },
-          ditolak: { color: 'bg-red-100 text-red-800', text: 'Ditolak' },
-          kembali: { color: 'bg-blue-100 text-blue-800', text: 'Dikembalikan' },
-        };
-        const config = statusConfig[row.status] || statusConfig.pending;
-        return (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-            {config.text}
-          </span>
-        );
-      }
-    },
-    { 
-      header: 'Aksi', 
-      field: 'actions',
-      render: (row) => (
-        <div className="flex space-x-2">
-          {row.status === 'pending' && (
-            <>
-              <button onClick={() => handleApprove(row.id)} className="text-green-600 hover:text-green-900 bg-green-50 px-2 py-1 rounded text-xs"><FaCheckCircle className="mr-1 inline"/>Setujui</button>
-              <button onClick={() => handleReject(row.id)} className="text-red-600 hover:text-red-900 bg-red-50 px-2 py-1 rounded text-xs"><FaTimesCircle className="mr-1 inline"/>Tolak</button>
-            </>
-          )}
-          {row.status === 'disetujui' && (
-            <button onClick={() => handleReturn(row.id)} className="text-blue-600 hover:text-blue-900 bg-blue-50 px-2 py-1 rounded text-xs"><FaArrowLeft className="mr-1 inline"/>Kembali</button>
-          )}
-        </div>
-      )
-    }
-  ];
 
   if (loading) {
     return (
@@ -291,10 +123,8 @@ export default function GuruView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                <FaBook className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">Tampilan Guru</span>
-              </div>
+              <FaBook className="h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">Tampilan Guru</span>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Selamat datang, {user?.nama}</span>
@@ -320,13 +150,13 @@ export default function GuruView() {
             {/* Tabs */}
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex space-x-8">
-                <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'dashboard' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'dashboard' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>
                   <FaTachometerAlt className="mr-2" /> Dashboard
                 </button>
-                <button onClick={() => setActiveTab('peminjaman')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'peminjaman' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <button onClick={() => setActiveTab('peminjaman')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'peminjaman' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>
                   <FaHandHolding className="mr-2" /> Peminjaman
                 </button>
-                <button onClick={() => setActiveTab('mapel')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'mapel' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <button onClick={() => setActiveTab('mapel')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'mapel' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>
                   <FaChalkboardTeacher className="mr-2" /> Mapel
                 </button>
               </nav>
@@ -336,110 +166,51 @@ export default function GuruView() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
                 <DashboardGrid statistics={statistics} />
-                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  
-                  {/* Card 1: Tracking Penggunaan Nama (Chart) */}
                   <div className="bg-white shadow rounded-lg p-6 border border-gray-100 flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        Tracking Penggunaan Nama Anda
-                      </h3>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Berdasarkan Mapel</span>
-                    </div>
-                    
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Tracking Penggunaan Nama Anda</h3>
                     <div className="flex-1 flex items-center justify-center">
                       {statistics.totalPeminjaman > 0 ? (
-                        <div className="w-full h-64 flex items-center justify-center">
-                          <Doughnut 
-                            data={chartData} 
-                            options={{ 
-                              maintainAspectRatio: false, 
-                              plugins: { 
-                                legend: { position: 'bottom' },
-                                tooltip: {
-                                  callbacks: {
-                                    label: function(context) {
-                                      let label = context.label || '';
-                                      if (label) {
-                                          label += ': ';
-                                      }
-                                      if (context.parsed !== null) {
-                                          label += context.parsed + ' kali';
-                                      }
-                                      return label;
-                                    }
-                                  }
-                                }
-                              } 
-                            }} 
-                          />
+                        <div className="w-full h-64">
+                          <Doughnut data={chartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
                         </div>
-                      ) : (
-                        <div className="text-center text-gray-500 py-8">
-                          <FaChartPie className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                          <p className="font-medium">Belum ada data peminjaman</p>
-                          <p className="text-sm">Nama Anda belum tercatat dalam transaksi peminjaman alat.</p>
-                        </div>
-                      )}
+                      ) : ( <p className="text-gray-500">Belum ada data</p> )}
                     </div>
                   </div>
-
-                  {/* Card 2: Informasi Guru & Detail Mapel */}
                   <div className="bg-white shadow rounded-lg p-6 border border-gray-100">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Detail Aktivitas</h3>
-                    
-                    <div className="mb-6">
-                      <div className="flex justify-between border-b pb-2 mb-2">
-                        <span className="text-gray-600 font-medium">Total Dilibatkan:</span>
-                        <span className="font-bold text-blue-600 text-lg">{statistics.totalPeminjaman || 0} Kali</span>
+                     <h3 className="text-lg font-medium text-gray-900 mb-4">Detail Aktivitas</h3>
+                     <div className="mb-6">
+                        <div className="flex justify-between border-b pb-2 mb-2">
+                          <span className="text-gray-600 font-medium">Total Dilibatkan:</span>
+                          <span className="font-bold text-blue-600 text-lg">{statistics.totalPeminjaman || 0} Kali</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mb-4">
-                        *Ini adalah jumlah total siswa yang meminjam alat atas nama Anda.
-                      </p>
-                    </div>
-
-                    <h4 className="text-md font-medium text-gray-800 mb-3">Rincian per Mapel:</h4>
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
-                      {statistics.mapelStats && Object.keys(statistics.mapelStats).length > 0 ? (
-                        Object.entries(statistics.mapelStats).map(([mapel, count]) => {
-                          const total = statistics.totalPeminjaman || 1;
-                          const percentage = (count / total) * 100;
-
-                          return (
-                            <div key={mapel}>
-                              <div className="flex justify-between text-sm mb-1">
-                                <span className="font-medium text-gray-700">{mapel}</span>
-                                <span className="text-gray-500">{count} kali ({percentage.toFixed(0)}%)</span>
+                      <h4 className="text-md font-medium text-gray-800 mb-3">Rincian per Mapel:</h4>
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                        {statistics.mapelStats && Object.keys(statistics.mapelStats).length > 0 ? (
+                          Object.entries(statistics.mapelStats).map(([mapel, count]) => {
+                            const total = statistics.totalPeminjaman || 1;
+                            const percentage = (count / total) * 100;
+                            return (
+                              <div key={mapel}>
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span className="font-medium text-gray-700">{mapel}</span>
+                                  <span className="text-gray-500">{count} kali ({percentage.toFixed(0)}%)</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
+                                </div>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-indigo-600 h-2 rounded-full transition-all duration-500" 
-                                  style={{ width: `${percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          )
-                        })
-                      ) : (
-                        <p className="text-gray-500 italic text-sm">Tidak ada data mapel.</p>
-                      )}
-                    </div>
-
-                    <div className="mt-6 pt-4 border-t">
-                      <h4 className="text-md font-medium text-gray-800 mb-2">Informasi Pribadi:</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between"><span className="text-gray-600">Nama:</span><span className="font-medium">{user?.nama}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-600">NIP:</span><span className="font-medium">{user?.nip}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-600">Email:</span><span className="font-medium">{user?.email}</span></div>
+                            )
+                          })
+                        ) : ( <p className="text-gray-500 italic text-sm">Tidak ada data mapel.</p> )}
                       </div>
-                    </div>
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Tab: Peminjaman (Laporan & Aksi) */}
+            {/* Tab: Peminjaman - MANUAL TABLE IMPLEMENTATION */}
             {activeTab === 'peminjaman' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
@@ -460,13 +231,82 @@ export default function GuruView() {
                   <Button onClick={handleRefreshData} className="flex items-center text-sm"><FaSync className="mr-2" /> Refresh</Button>
                 </div>
 
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                  <Table 
-                    columns={columns}
-                    data={filteredPeminjamans}
-                    loading={loading}
-                    emptyMessage="Tidak ada data peminjaman untuk mapel yang Anda ampu."
-                  />
+                <div className="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Siswa</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mapel</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alat</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kondisi</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredPeminjamans.length > 0 ? (
+                        filteredPeminjamans.map((row) => (
+                          <tr key={row.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {row.user?.nama || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {row.user?.kelas || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {row.mapel || '-'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                                  <FaTools className="h-4 w-4 text-green-600" />
+                                </div>
+                                <span className="text-sm text-gray-900 ml-2">{row.alat?.nama || '-'}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {row.tanggalPeminjaman ? new Date(row.tanggalPeminjaman).toLocaleDateString('id-ID') : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {row.status === 'kembali' && row.kondisiPengembalian ? (
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  row.kondisiPengembalian === 'baik' ? 'bg-green-100 text-green-800' : 
+                                  row.kondisiPengembalian === 'rusak berat' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {row.kondisiPengembalian}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                row.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                row.status === 'disetujui' ? 'bg-green-100 text-green-800' :
+                                row.status === 'ditolak' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {row.status === 'pending' ? 'Menunggu' : 
+                                 row.status === 'disetujui' ? 'Dipinjam' : 
+                                 row.status === 'ditolak' ? 'Ditolak' : 
+                                 row.status === 'kembali' ? 'Dikembalikan' : row.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
+                            Tidak ada data peminjaman.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
