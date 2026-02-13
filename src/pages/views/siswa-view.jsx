@@ -56,9 +56,20 @@ export default function SiswaView() {
           setAlats(alatsData.result);
         }
         
-        if (peminjamanData.error) {
-          setMessage(peminjamanData.message);
-        } else {
+// Di dalam useEffect fetchData
+if (!peminjamanData.error) {
+  // Logika enrichment frontend
+  const enrichedPeminjamans = peminjamanData.result.map(p => {
+    // Cari data alat di list alats yang sudah diambil
+    const alatDetail = alatsData.result?.find(a => a.id === p.alatId);
+    return {
+      ...p,
+      alat: alatDetail || null // Tambahkan object alat
+    };
+  });
+  setPeminjamans(enrichedPeminjamans);
+}
+        else {
           setPeminjamans(peminjamanData.result);
         }
       } catch (error) {
@@ -189,9 +200,7 @@ export default function SiswaView() {
   };
 
   // Filter data berdasarkan pencarian dan status
-  const filteredAlats = alats.filter(alat => 
-    alat.nama.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAlats = alats.filter(alat => alat?.nama?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const filteredPeminjamans = peminjamans.filter(peminjaman => {
     const matchesSearch = peminjaman.alat?.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||

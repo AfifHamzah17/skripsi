@@ -1,16 +1,27 @@
-// src/pages/views/guru-view.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { 
   FaBook, FaUser, FaSignOutAlt, FaTachometerAlt, FaHandHolding, FaTools, 
   FaCalendarAlt, FaChalkboardTeacher, FaSync, FaCheckCircle, 
-  FaTimesCircle, FaArrowLeft, FaPlus // <--- FIX: Tambahkan FaPlus disini
+  FaTimesCircle, FaArrowLeft, FaPlus, FaChartPie 
 } from 'react-icons/fa';
 import { useAuth } from '../../Context/AuthContext';
 import { getPeminjamanByGuru } from '../models/peminjaman-model';
 import Table from '../../components/table';
 import DashboardGrid from '../../components/dashboard/dashboardGrid';
 import Button from '../../components/button';
+
+// Import Chart.js
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+
+// Registrasi Komponen Chart
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function GuruView() {
   const { user, logout, mapelData } = useAuth();
@@ -22,7 +33,7 @@ export default function GuruView() {
   const [statistics, setStatistics] = useState({});
   
   // Filter status di tab peminjaman
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'disetujui', 'kembali', 'ditolak'
+  const [statusFilter, setStatusFilter] = useState('all'); 
 
   useEffect(() => {
     fetchDashboardData();
@@ -31,16 +42,18 @@ export default function GuruView() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
+      // Panggil API yang sudah difilter berdasarkan ID Guru login
       const response = await getPeminjamanByGuru();
       
       if (response.error) {
         setMessage(response.message);
         setPeminjamans([]);
+        setStatistics({}); 
       } else {
         const data = response.result || [];
         setPeminjamans(data);
         
-        // Hitung Statistik Dashboard
+        // 1. Hitung Statistik Dasar
         const stats = {
           totalPeminjaman: data.length,
           pending: data.filter(p => p.status === 'pending').length,
@@ -48,14 +61,17 @@ export default function GuruView() {
           selesai: data.filter(p => p.status === 'kembali').length,
           ditolak: data.filter(p => p.status === 'ditolak').length,
         };
-        
-        // Statistik per Mapel
-        const mapelStats = {};
-        mapelData.forEach(m => {
-            mapelStats[m] = data.filter(p => p.mapel === m).length;
-        });
-        stats.mapelStats = mapelStats;
 
+        // 2. Hitung Statistik per Mapel (Logika Tracking)
+        // Loop melalui data peminjaman yang sudah difilter, hitung frekuensi mapelnya
+        const mapelStats = {};
+        data.forEach(p => {
+          if (p.mapel) {
+            mapelStats[p.mapel] = (mapelStats[p.mapel] || 0) + 1;
+          }
+        });
+        
+        stats.mapelStats = mapelStats;
         setStatistics(stats);
       }
     } catch (error) {
@@ -65,6 +81,37 @@ export default function GuruView() {
       setLoading(false);
     }
   };
+
+  // --- DATA PROCESSING UNTUK CHART ---
+  const chartData = useMemo(() => {
+    const labels = Object.keys(statistics.mapelStats || {});
+    const counts = Object.values(statistics.mapelStats || {});
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Jumlah Peminjaman',
+          data: counts,
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.7)', 
+            'rgba(16, 185, 129, 0.7)', 
+            'rgba(245, 158, 11, 0.7)', 
+            'rgba(239, 68, 68, 0.7)',  
+            'rgba(139, 92, 246, 0.7)', 
+          ],
+          borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)',
+            'rgba(239, 68, 68, 1)',
+            'rgba(139, 92, 246, 1)',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+  }, [statistics.mapelStats]);
 
   const handleLogout = () => {
     logout();
@@ -270,7 +317,7 @@ export default function GuruView() {
               </div>
             )}
 
-            {/* Tabs - HAPUS TAB LAPORAN */}
+            {/* Tabs */}
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex space-x-8">
                 <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'dashboard' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
@@ -291,38 +338,101 @@ export default function GuruView() {
                 <DashboardGrid statistics={statistics} />
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  
+                  {/* Card 1: Tracking Penggunaan Nama (Chart) */}
+                  <div className="bg-white shadow rounded-lg p-6 border border-gray-100 flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Tracking Penggunaan Nama Anda
+                      </h3>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Berdasarkan Mapel</span>
+                    </div>
+                    
+                    <div className="flex-1 flex items-center justify-center">
+                      {statistics.totalPeminjaman > 0 ? (
+                        <div className="w-full h-64 flex items-center justify-center">
+                          <Doughnut 
+                            data={chartData} 
+                            options={{ 
+                              maintainAspectRatio: false, 
+                              plugins: { 
+                                legend: { position: 'bottom' },
+                                tooltip: {
+                                  callbacks: {
+                                    label: function(context) {
+                                      let label = context.label || '';
+                                      if (label) {
+                                          label += ': ';
+                                      }
+                                      if (context.parsed !== null) {
+                                          label += context.parsed + ' kali';
+                                      }
+                                      return label;
+                                    }
+                                  }
+                                }
+                              } 
+                            }} 
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 py-8">
+                          <FaChartPie className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                          <p className="font-medium">Belum ada data peminjaman</p>
+                          <p className="text-sm">Nama Anda belum tercatat dalam transaksi peminjaman alat.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Informasi Guru & Detail Mapel */}
                   <div className="bg-white shadow rounded-lg p-6 border border-gray-100">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Analisa Peminjaman per Mapel</h3>
-                    <div className="space-y-3">
-                      {mapelData && mapelData.length > 0 ? (
-                        mapelData.map((mapel) => {
-                          const count = statistics.mapelStats?.[mapel] || 0;
-                          const percentage = peminjamans.length > 0 ? (count / peminjamans.length) * 100 : 0;
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Detail Aktivitas</h3>
+                    
+                    <div className="mb-6">
+                      <div className="flex justify-between border-b pb-2 mb-2">
+                        <span className="text-gray-600 font-medium">Total Dilibatkan:</span>
+                        <span className="font-bold text-blue-600 text-lg">{statistics.totalPeminjaman || 0} Kali</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-4">
+                        *Ini adalah jumlah total siswa yang meminjam alat atas nama Anda.
+                      </p>
+                    </div>
+
+                    <h4 className="text-md font-medium text-gray-800 mb-3">Rincian per Mapel:</h4>
+                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                      {statistics.mapelStats && Object.keys(statistics.mapelStats).length > 0 ? (
+                        Object.entries(statistics.mapelStats).map(([mapel, count]) => {
+                          const total = statistics.totalPeminjaman || 1;
+                          const percentage = (count / total) * 100;
+
                           return (
                             <div key={mapel}>
                               <div className="flex justify-between text-sm mb-1">
                                 <span className="font-medium text-gray-700">{mapel}</span>
-                                <span className="text-gray-500">{count} Peminjaman</span>
+                                <span className="text-gray-500">{count} kali ({percentage.toFixed(0)}%)</span>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-indigo-600 h-2 rounded-full transition-all duration-500" 
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
                               </div>
                             </div>
                           )
                         })
                       ) : (
-                        <p className="text-gray-500 italic">Belum ada mapel.</p>
+                        <p className="text-gray-500 italic text-sm">Tidak ada data mapel.</p>
                       )}
                     </div>
-                  </div>
 
-                  <div className="bg-white shadow rounded-lg p-6 border border-gray-100">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Informasi Guru</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between border-b pb-2"><span className="text-gray-600">Nama:</span><span className="font-medium">{user?.nama}</span></div>
-                      <div className="flex justify-between border-b pb-2"><span className="text-gray-600">Email:</span><span className="font-medium">{user?.email}</span></div>
-                      <div className="flex justify-between border-b pb-2"><span className="text-gray-600">NIP:</span><span className="font-medium">{user?.nip}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">No. HP:</span><span className="font-medium">{user?.nohp}</span></div>
+                    <div className="mt-6 pt-4 border-t">
+                      <h4 className="text-md font-medium text-gray-800 mb-2">Informasi Pribadi:</h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between"><span className="text-gray-600">Nama:</span><span className="font-medium">{user?.nama}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">NIP:</span><span className="font-medium">{user?.nip}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Email:</span><span className="font-medium">{user?.email}</span></div>
+                      </div>
                     </div>
                   </div>
                 </div>

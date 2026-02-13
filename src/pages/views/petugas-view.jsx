@@ -430,9 +430,18 @@ export default function PetugasView() {
       } else {
         setMessage('Pengembalian alat berhasil diproses');
         toast.success('Pengembalian alat berhasil diproses');
+        
+        // FIX: Update state secara lokal agar tanggal & kondisi langsung muncul di tabel
         setPeminjamans(peminjamans.map(p => 
-          p.id === returnModal.peminjamanId ? {...p, status: 'kembali'} : p
+          p.id === returnModal.peminjamanId ? {
+            ...p, 
+            status: 'kembali', 
+            kondisiPengembalian: returnModal.condition,
+            tanggalPengembalian: new Date().toISOString() // Set waktu saat ini secara lokal
+          } : p
         ));
+
+        // Update statistik dashboard
         setStatistics(prev => ({
           ...prev,
           disetujui: prev.disetujui - 1,

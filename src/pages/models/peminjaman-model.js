@@ -1,13 +1,21 @@
-// src/pages/models/peminjaman-model.js
+// src/models/peminjaman-model.jsx
+
 // const API_BASE = 'http://localhost:3000/api';
 // const API_BASE = 'https://skripsi-api-995782183824.asia-southeast2.run.app/api';
 const API_BASE = import.meta.env.VITE_API_BASE;
 
-// === HELPER: Bersihkan URL agar tidak ada double slash (//) ===
 const cleanUrl = (base, path) => {
   const trimmedBase = base.replace(/\/+$/, '');
   const trimmedPath = path.replace(/^\/+/, '');
   return `${trimmedBase}/${trimmedPath}`;
+};
+
+export const getPeminjamanByGuru = async () => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(cleanUrl(API_BASE, 'peminjaman/guru'), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.json();
 };
 
 // Fungsi untuk membuat peminjaman baru
@@ -24,15 +32,6 @@ export const createPeminjaman = async (data) => {
   return response.json();
 };
 
-// Fungsi untuk mendapatkan peminjaman berdasarkan guru
-export const getPeminjamanByGuru = async () => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(cleanUrl(API_BASE, 'peminjaman/guru'), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.json();
-};
-
 // Fungsi untuk mendapatkan semua peminjaman
 export const getAllPeminjaman = async () => {
   const token = localStorage.getItem('token');
@@ -45,10 +44,40 @@ export const getAllPeminjaman = async () => {
 // Fungsi untuk mendapatkan peminjaman milik sendiri
 export const getMyPeminjaman = async () => {
   const token = localStorage.getItem('token');
-  const response = await fetch(cleanUrl(API_BASE, 'peminjaman/my'), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.json();
+  try {
+    const response = await fetch(cleanUrl(API_BASE, 'peminjaman/my'), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // Cek apakah response bukan JSON valid (misal HTML error dari server)
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Server returned non-JSON:', text);
+      return { 
+        error: true, 
+        message: 'Server error (bukan JSON). Cek konsol untuk detail.' 
+      };
+    }
+
+    const data = await response.json();
+
+    // Jika status bukan 200-299, anggap error
+    if (!response.ok) {
+      return { 
+        error: true, 
+        message: data.message || `Error ${response.status}` 
+      };
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Network error:', error);
+    return { 
+      error: true, 
+      message: 'Gagal terhubung ke server atau parsing error.' 
+    };
+  }
 };
 
 // Fungsi untuk memperbarui status peminjaman
