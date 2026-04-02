@@ -1,4 +1,5 @@
-const API_URL = '/api/users';
+// pages/profile/profile-model.js
+const API_URL = import.meta.env.VITE_API_BASE + '/users';
 
 async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem('token');
