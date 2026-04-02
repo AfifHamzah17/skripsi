@@ -1,21 +1,17 @@
 // vite.config.js
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  
-  return {
-    plugins: [react()],
-    server: {
-      port: 5173,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_BASE.replace('/api', ''),
-          changeOrigin: true,
-          secure: false,
-        },
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'https://skripsi-api-995782183824.asia-southeast2.run.app',
+        changeOrigin: true,
+        secure: false,
       },
     },
-  };
+  },
 });
