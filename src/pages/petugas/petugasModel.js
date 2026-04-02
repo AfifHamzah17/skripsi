@@ -1,8 +1,9 @@
-// src/pages/petugas/petugasModel.js
 import { getAllPeminjaman, updatePeminjamanStatus, getAllAlat, deletePeminjaman } from '../models/peminjaman-model';
-import { getAllUsers } from '../models/auth-model';
+import { getAllUsers } from '../auth/authModel';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+
+const API = () => import.meta.env.VITE_API_BASE;
 
 const safeJson = async (response) => {
   const ct = response.headers.get('content-type') || '';
@@ -10,16 +11,22 @@ const safeJson = async (response) => {
   return response.json();
 };
 
+const authHeader = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
+};
+
+const jsonHeader = () => ({ 'Content-Type': 'application/json', ...authHeader() });
+
 export const petugasModel = {
   getInitialData: async () => {
     try {
-      const token = localStorage.getItem('token');
-      const base = import.meta.env.VITE_API_BASE;
+      const base = await API();
       const [peminjamanRes, alatRes, usersRes, teachersRes] = await Promise.all([
         getAllPeminjaman(),
         getAllAlat(),
         getAllUsers(),
-        fetch(base + '/teachers', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => safeJson(r)).catch(() => ({ teachers: [] }))
+        fetch(base + '/teachers', { headers: authHeader() }).then(r => safeJson(r)).catch(() => ({ teachers: [] }))
       ]);
       return {
         peminjamans: peminjamanRes.error ? [] : peminjamanRes.result,
@@ -32,12 +39,20 @@ export const petugasModel = {
 
   returnPeminjaman: async (id, condition, buktiGambar = null) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/pengembalian/' + id + '/kondisi', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ condition, buktiGambar }) });
+      const base = await API();
+      console.log('[MODEL] returnPeminjaman endpoint:', base + '/peminjaman/' + id + '/return-condition');
+      const response = await fetch(base + '/peminjaman/' + id + '/return-condition', {
+        method: 'PUT',
+        headers: jsonHeader(),
+        body: JSON.stringify({ condition, buktiGambar }),
+      });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal memproses pengembalian');
       return data;
-    } catch (error) { return { error: true, message: error.message }; }
+    } catch (error) {
+      console.error('[MODEL] returnPeminjaman error:', error);
+      return { error: true, message: error.message };
+    }
   },
 
   approvePeminjaman: (id) => updatePeminjamanStatus(id, 'disetujui'),
@@ -46,8 +61,8 @@ export const petugasModel = {
 
   editPeminjamanData: async (id, data) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/peminjaman/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(data) });
+      const base = await API();
+      const response = await fetch(base + '/peminjaman/' + id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify(data) });
       const res = await safeJson(response);
       if (!response.ok) throw new Error(res.message || 'Gagal mengupdate');
       return res;
@@ -56,11 +71,11 @@ export const petugasModel = {
 
   addAlat: async (alatData, imageFile = null) => {
     try {
-      const token = localStorage.getItem('token');
+      const base = await API();
       const formData = new FormData();
       Object.keys(alatData).forEach(key => { if (key !== 'gambar' && alatData[key] !== null && alatData[key] !== undefined) formData.append(key, alatData[key]); });
       if (imageFile) formData.append('gambar', imageFile);
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/alat', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+      const response = await fetch(base + '/alat', { method: 'POST', headers: authHeader(), body: formData });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal menambah alat');
       return data;
@@ -69,11 +84,11 @@ export const petugasModel = {
 
   editAlat: async (id, alatData, imageFile = null) => {
     try {
-      const token = localStorage.getItem('token');
+      const base = await API();
       const formData = new FormData();
       Object.keys(alatData).forEach(key => { if (key !== 'gambar' && alatData[key] !== null && alatData[key] !== undefined) formData.append(key, alatData[key]); });
       if (imageFile) formData.append('gambar', imageFile);
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/alat/' + id, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+      const response = await fetch(base + '/alat/' + id, { method: 'PUT', headers: authHeader(), body: formData });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal mengupdate alat');
       return data;
@@ -82,8 +97,8 @@ export const petugasModel = {
 
   removeAlat: async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/alat/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+      const base = await API();
+      const response = await fetch(base + '/alat/' + id, { method: 'DELETE', headers: authHeader() });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal menghapus alat');
       return data;
@@ -92,8 +107,8 @@ export const petugasModel = {
 
   getAlatDetail: async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/alat/' + id + '/detail', { headers: { 'Authorization': 'Bearer ' + token } });
+      const base = await API();
+      const response = await fetch(base + '/alat/' + id + '/detail', { headers: authHeader() });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal mengambil detail');
       return data;
@@ -102,8 +117,8 @@ export const petugasModel = {
 
   getAlatTracking: async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/alat/' + id + '/tracking', { headers: { 'Authorization': 'Bearer ' + token } });
+      const base = await API();
+      const response = await fetch(base + '/alat/' + id + '/tracking', { headers: authHeader() });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal mengambil tracking');
       return data;
@@ -112,8 +127,8 @@ export const petugasModel = {
 
   resetUserPassword: async (userId, newPassword) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/users/' + userId + '/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ newPassword }) });
+      const base = await API();
+      const response = await fetch(base + '/users/' + userId + '/reset-password', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ newPassword }) });
       const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Gagal mereset password');
       return data;
@@ -122,25 +137,24 @@ export const petugasModel = {
 
   deleteUser: async (userId) => {
     try {
-      const token = localStorage.getItem('token');
-      const base = import.meta.env.VITE_API_BASE;
-      const r1 = await fetch(base + '/users/' + userId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+      const base = await API();
+      const headers = authHeader();
+      const r1 = await fetch(base + '/users/' + userId, { method: 'DELETE', headers });
       if (!r1.ok) { const d = await safeJson(r1); throw new Error(d.message || 'Gagal menghapus user'); }
-      await fetch(base + '/teachers/user/' + userId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+      await fetch(base + '/teachers/user/' + userId, { method: 'DELETE', headers }).catch(() => {});
       return { success: true };
     } catch (error) { return { error: true, message: error.message }; }
   },
 
   createUser: async (userData) => {
     try {
-      const token = localStorage.getItem('token');
-      const base = import.meta.env.VITE_API_BASE;
-      const userRes = await fetch(base + '/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(userData) });
+      const base = await API();
+      const userRes = await fetch(base + '/users', { method: 'POST', headers: jsonHeader(), body: JSON.stringify(userData) });
       const userDataRes = await safeJson(userRes);
       if (!userRes.ok) throw new Error(userDataRes.message);
       if (userData.role === 'guru' && userData.mapel?.length > 0) {
         const userId = userDataRes.user?.id || userDataRes.id;
-        if (userId) await fetch(base + '/teachers', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
+        if (userId) await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
       }
       return userDataRes;
     } catch (error) { return { error: true, message: error.message }; }
@@ -148,17 +162,17 @@ export const petugasModel = {
 
   updateUser: async (userId, userData) => {
     try {
-      const token = localStorage.getItem('token');
-      const base = import.meta.env.VITE_API_BASE;
-      const userRes = await fetch(base + '/users/' + userId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(userData) });
+      const base = await API();
+      const headers = authHeader();
+      const userRes = await fetch(base + '/users/' + userId, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify(userData) });
       const userDataRes = await safeJson(userRes);
       if (!userRes.ok) throw new Error(userDataRes.message);
       if (userData.role === 'guru') {
-        const ct = await fetch(base + '/teachers/user/' + userId, { headers: { 'Authorization': 'Bearer ' + token } });
+        const ct = await fetch(base + '/teachers/user/' + userId, { headers });
         if (ct.ok) {
           const td = await safeJson(ct);
-          if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});
-        } else await fetch(base + '/teachers', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
+          if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});
+        } else await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
       }
       return userDataRes;
     } catch (error) { return { error: true, message: error.message }; }

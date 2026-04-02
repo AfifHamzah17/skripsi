@@ -1,0 +1,158 @@
+/* src/pages/auth/auth.css */
+
+/* ===================== ANIMATIONS ===================== */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 767px) {
+  .auth-panel-desktop-only {
+    display: none !important;
+  }
+  
+  .auth-form-panel {
+    width: 100% !important;
+  }
+  
+  .auth-mobile-link {
+    display: block !important;
+  }
+
+  .auth-main-box {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .auth-panel-desktop-only {
+    display: block !important;
+  }
+  
+  .auth-form-panel {
+    width: 50% !important;
+  }
+
+  .auth-mobile-link {
+    display: none !important;
+  }
+
+  .auth-main-box {
+    height: calc(100vh - 2rem) !important;
+    border-radius: 1rem !important;
+  }
+}
+
+/* ===================== PASSWORD DOTS ===================== */
+.password-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.password-dot.active {
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.password-dot-weak {
+  background-color: #ef4444;
+}
+
+.password-dot-medium {
+  background-color: #f97316;
+}
+
+.password-dot-strong {
+  background-color: #22c55e;
+}
+
+.password-dot-inactive {
+  background-color: #e5e7eb;
+}
+
+/* ===================== SCROLLBAR ===================== */
+.auth-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.auth-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.auth-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ===================== CHECKBOX CUSTOM ===================== */
+.mapel-checkbox {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mapel-checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.mapel-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.mapel-checkbox:hover {
+  border-color: #2563eb;
+}

@@ -17,18 +17,10 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const maxSize = 800;
-  let { width, height } = image;
-  if (width > height) { if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; } }
-  else { if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; } }
-  canvas.width = width; canvas.height = height;
-  ctx.drawImage(image, 0, 0, width, height);
-  const scaleX = image.naturalWidth / width, scaleY = image.naturalHeight / height;
-  const cropCanvas = document.createElement("canvas");
-  const cropCtx = cropCanvas.getContext("2d");
-  cropCanvas.width = pixelCrop.width; cropCanvas.height = pixelCrop.height;
-  cropCtx.drawImage(canvas, pixelCrop.x * scaleX, pixelCrop.y * scaleY, pixelCrop.width * scaleX, pixelCrop.height * scaleY, 0, 0, pixelCrop.width, pixelCrop.height);
-  return new Promise((resolve) => { cropCanvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.7); });
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  return new Promise((resolve) => { canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85); });
 };
 
 export default function PetugasPresenter() {
@@ -76,7 +68,8 @@ export default function PetugasPresenter() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [editLaporanModal, setEditLaporanModal] = useState({ isOpen: false, data: null, jumlah: '', mapel: '' });
+  const [editLaporanModal, setEditLaporanModal] = useState({ isOpen: false, data: null, jumlah: '', mapel: '', kondisiPengembalian: '' });  
+  const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
 
   useEffect(() => {
     const handleHash = () => { const tab = window.location.hash.replace('#/', '').split('/')[1] || 'dashboard'; setActiveTab(['dashboard', 'peminjaman', 'alat', 'guru', 'laporan'].includes(tab) ? tab : 'dashboard'); };
@@ -267,11 +260,13 @@ export default function PetugasPresenter() {
     setAlatTrackingModalOpen(true);
   };
 
-  const handleOpenEditLaporan = (p) => setEditLaporanModal({ isOpen: true, data: p, jumlah: p.jumlah, mapel: Array.isArray(p.mapel) ? p.mapel[0] : p.mapel });
+  const handleOpenEditLaporan = (p) => setEditLaporanModal({ isOpen: true, data: p, jumlah: p.jumlah, mapel: Array.isArray(p.mapel) ? p.mapel[0] : p.mapel, kondisiPengembalian: p.kondisiPengembalian || '' });  
   const handleSaveEditLaporan = async () => {
     if (!editLaporanModal.jumlah || parseInt(editLaporanModal.jumlah) < 1) return toast.error('Jumlah harus diisi');
-    const res = await petugasModel.editPeminjamanData(editLaporanModal.data.id, { jumlah: parseInt(editLaporanModal.jumlah), mapel: editLaporanModal.mapel });
-    if (res.error) toast.error(res.message); else { toast.success('Data diperbarui'); setEditLaporanModal({ isOpen: false, data: null, jumlah: '', mapel: '' }); loadData(); }
+    const payload = { jumlah: parseInt(editLaporanModal.jumlah), mapel: editLaporanModal.mapel };
+    if (editLaporanModal.kondisiPengembalian) payload.kondisiPengembalian = editLaporanModal.kondisiPengembalian;
+    const res = await petugasModel.editPeminjamanData(editLaporanModal.data.id, payload);
+    if (res.error) toast.error(res.message); else { toast.success('Data diperbarui'); setEditLaporanModal({ isOpen: false, data: null, jumlah: '', mapel: '', kondisiPengembalian: '' }); loadData(); }
   };
 
   const handleDeletePeminjaman = (id) => setConfirmModal({ isOpen: true, title: 'Hapus Transaksi', message: 'Data akan dihapus permanen.', icon: <FaTrash className="mx-auto h-12 w-12 text-red-500" />, onConfirm: async () => { const res = await petugasModel.deletePeminjamanData(id); if (res.error) toast.error(res.message); else { toast.success('Dihapus'); setPeminjamans(prev => prev.filter(p => p.id !== id)); } setConfirmModal(v => ({ ...v, isOpen: false })); }, confirmText: 'Hapus', cancelText: 'Batal' });
@@ -298,6 +293,25 @@ export default function PetugasPresenter() {
   const viewGuruProfile = (id) => { const g = guruList.find(x => x.id === id); if (g) { setGuruDetail(g); setGuruDetailModalOpen(true); } };
   const handleLogout = () => setConfirmModal({ isOpen: true, title: 'Logout', message: 'Keluar dari sistem?', icon: <FaSignOutAlt className="mx-auto h-12 w-12 text-blue-500" />, onConfirm: () => { logout(); toast.success('Berhasil logout'); window.location.hash = '#/auth'; }, confirmText: 'Ya', cancelText: 'Batal' });
   const handleExportFiltered = () => petugasModel.exportToExcel(filteredLaporan, guruList, alats).then(res => { if (!res.success) toast.error(res.error); });
+
+  const handleViewDetail = useCallback((p) => {
+    const userInfo = guruList.find(u => u.id === p.userId);
+    const teacherDoc = teachers.find(t => t.id === p.guruId);
+    const teacherUser = teacherDoc ? guruList.find(u => u.id === teacherDoc.userId) : null;
+    setDetailModal({
+      isOpen: true,
+      data: {
+        ...p,
+        fullUser: { ...p.user, ...(userInfo || {}) },
+        fullGuru: {
+          ...p.guru,
+          foto: p.guru?.foto || teacherUser?.foto || null,
+          nohp: p.guru?.nohp || teacherUser?.nohp || '-',
+          mapelUsed: Array.isArray(p.mapel) ? p.mapel : (p.mapel ? [p.mapel] : []),
+        },
+      },
+    });
+  }, [guruList, teachers]);
 
   return (
     <PetugasView
@@ -330,6 +344,7 @@ export default function PetugasPresenter() {
       handleDeleteUser={handleDeleteUser} handlePasswordChange={handlePasswordChange} confirmResetPassword={confirmResetPassword}
       handleAddUser={handleAddUser} handleCloseUserModal={handleCloseUserModal} handleCreateUser={handleCreateUser}
       handleUpdateUser={handleUpdateUser} handleEditUser={handleEditUser} handleViewAlatTracking={handleViewAlatTracking}
-    />
+      detailModal={detailModal} setDetailModal={setDetailModal} handleViewDetail={handleViewDetail}    
+      />
   );
 }
