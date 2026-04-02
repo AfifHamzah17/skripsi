@@ -1,124 +1,88 @@
-// src/routes/router.jsx
-import React, { useEffect, useState } from "react";
-import { useAuth } from "../Context/AuthContext";
-import LoginView from "../pages/views/login-view";
-import RegisterView from "../pages/views/register-view";
-import HomeView from "../pages/views/home-view";
-import NotFoundView from "../pages/views/not-found-view"; 
-import SiswaView from "../pages/views/siswa-view";
-import GuruView from "../pages/views/guru-view";
-import PetugasView from "../pages/views/petugas-view";
-import AdminView from "../pages/views/admin-view";
-import PilihMapelView from "../pages/views/pilih-mapel-view";
-import ProfileView from "../pages/views/profile-view";
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../Context/AuthContext';
+import AuthView from '../pages/views/auth-view';
+import HomeView from '../pages/views/home-view';
+import NotFoundView from '../pages/views/not-found-view';
+import AdminView from '../pages/views/admin-view';
+import PilihMapelView from '../pages/views/pilih-mapel-view';
+import ProfilePresenter from '../pages/profile/profile-presenter';
+import GuruPresenter from '../pages/guru/guru-presenter';
+import PetugasPresenter from '../pages/petugas/petugasPresenter';
+import SiswaPresenter from '../pages/siswa/siswaPresenter';
 
-const routeMap = {
-  login: <LoginView />,
-  register: <RegisterView />,
-  home: <HomeView />,
-  siswa: <SiswaView />,
-  guru: <GuruView />,
-  petugas: <PetugasView />,
-  admin: <AdminView />,
-  "pilih-mapel": <PilihMapelView />,
-  profile: <ProfileView />,
-};
+const DEFAULT_SUBS = { siswa: 'pinjam', petugas: 'dashboard', guru: 'dashboard', admin: 'dashboard' };
+const ROUTE_COMPONENTS = { siswa: SiswaPresenter, petugas: PetugasPresenter, guru: GuruPresenter, admin: AdminView };
+const STATIC_ROUTES = { auth: AuthView, home: HomeView, 'pilih-mapel': PilihMapelView };
 
 export default function Router() {
   const { user, isAuthenticated, hasMapel } = useAuth();
-  const [currentHash, setCurrentHash] = useState(window.location.hash.replace("#/", "") || "login");
+  const [currentHash, setCurrentHash] = useState(window.location.hash.replace('#/', '') || 'auth');
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [guruId, setGuruId] = useState(null);
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace("#/", "") || "login";
+      let hash = window.location.hash.replace('#/', '') || 'auth';
+      if (hash === 'login' || hash === 'register') hash = 'auth';
       setCurrentHash(hash);
-      
-      // Extract guru ID from hash if present
-      if (hash.startsWith("profile/")) {
-        const id = hash.split("/")[1];
-        setGuruId(id);
-      } else {
-        setGuruId(null);
-      }
     };
-
+    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   useEffect(() => {
-    // Hanya lakukan redirect jika sudah terautentikasi dan tidak sedang dalam proses redirect
-    if (!isRedirecting && isAuthenticated) {
-      const hash = currentHash;
-      
-      // Jika user sudah login dan mencoba akses login/register, arahkan ke dashboard
-      if (hash === "login" || hash === "register") {
+    if (isRedirecting) return;
+    const parts = currentHash.split('/');
+    const baseHash = parts[0];
+
+    if (isAuthenticated) {
+      if (baseHash === 'auth' || baseHash === 'home') {
         setIsRedirecting(true);
-        if (user.role === 'siswa') {
-          window.location.hash = "#/siswa";
-        } else if (user.role === 'guru') {
-          // Cek apakah guru sudah memiliki mapel
-          if (hasMapel === false) {
-            window.location.hash = "#/pilih-mapel";
-          } else {
-            window.location.hash = "#/guru";
-          }
-        } else if (user.role === 'petugas') {
-          window.location.hash = "#/petugas";
-        } else if (user.role === 'admin') {
-          window.location.hash = "#/admin";
-        }
+        const targets = { siswa: '#/siswa/pinjam', guru: hasMapel ? '#/guru/dashboard' : '#/pilih-mapel', petugas: '#/petugas/dashboard', admin: '#/admin/dashboard' };
+        window.location.hash = targets[user.role] || '#/auth';
         return;
       }
-      
-      // Arahkan user ke view sesuai role jika di home
-      if (hash === "home") {
+      if (user.role === 'guru' && hasMapel === false && baseHash !== 'pilih-mapel') {
         setIsRedirecting(true);
-        if (user.role === 'siswa') {
-          window.location.hash = "#/siswa";
-        } else if (user.role === 'guru') {
-          // Cek apakah guru sudah memiliki mapel
-          if (hasMapel === false) {
-            window.location.hash = "#/pilih-mapel";
-          } else {
-            window.location.hash = "#/guru";
-          }
-        } else if (user.role === 'petugas') {
-          window.location.hash = "#/petugas";
-        } else if (user.role === 'admin') {
-          window.location.hash = "#/admin";
-        }
+        window.location.hash = '#/pilih-mapel';
         return;
       }
-      
-      // Jika guru dan belum memilih mapel, arahkan ke halaman pemilihan mapel
-      if (user.role === 'guru' && hasMapel === false && hash !== "pilih-mapel") {
+      if (ROUTE_COMPONENTS[baseHash] && !parts[1]) {
         setIsRedirecting(true);
-        window.location.hash = "#/pilih-mapel";
+        window.location.hash = `#/${baseHash}/${DEFAULT_SUBS[baseHash]}`;
         return;
       }
     }
-    
-    // Jika user belum login dan mencoba akses halaman selain login/register, arahkan ke login
-    if (!isAuthenticated && !["login", "register"].includes(currentHash.split("/")[0])) {
+
+    if (!isAuthenticated && baseHash !== 'auth') {
       setIsRedirecting(true);
-      window.location.hash = "#/login";
+      window.location.hash = '#/auth';
       return;
     }
-    
-    // Reset redirect flag setelah proses redirect selesai
     setIsRedirecting(false);
   }, [currentHash, isAuthenticated, user, hasMapel, isRedirecting]);
 
-  const hash = currentHash.split("/")[0]; // Get base hash without parameters
-  const Page = routeMap[hash] || <NotFoundView />;
+  if (isRedirecting) return null;
 
-  // Pass guruId as a prop to ProfileView if present
-  if (hash === "profile" && guruId) {
-    return React.cloneElement(<ProfileView />, { guruId });
+  const parts = currentHash.split('/');
+  const baseHash = parts[0];
+
+  // ✅ Profile: "my" → pakai ID user yang login, selain itu pakai ID dari URL
+  if (baseHash === 'profile' && parts[1]) {
+    const profileId = parts[1] === 'my' ? user?.id : parts[1];
+    return <ProfilePresenter userId={profileId} currentUser={user} />;
   }
 
-  return Page;
+  if (STATIC_ROUTES[baseHash] && !parts[1]) {
+    const StaticComponent = STATIC_ROUTES[baseHash];
+    return <StaticComponent />;
+  }
+
+  const Component = ROUTE_COMPONENTS[baseHash];
+  if (Component) {
+    const activeTab = parts[1] || DEFAULT_SUBS[baseHash] || null;
+    return <Component user={user} activeTab={activeTab} />;
+  }
+
+  return <NotFoundView />;
 }
