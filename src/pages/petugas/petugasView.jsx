@@ -8,6 +8,8 @@ import Modal from '../../components/modal';
 import AlatForm from '../../components/alat/alatForm';
 import UserForm from '../../components/user/UserForm';
 import AlatCard from '../../components/alat/AlatCard';
+import PetugasMapelView from '../../components/PetugasMapelView';
+import { toast } from 'react-toastify';
 import { FaTools, FaExternalLinkAlt, FaCalendarAlt, FaImage, FaSync, FaPlus, FaCheckCircle, FaTimesCircle, FaEdit, FaTrash, FaArrowLeft, FaEye, FaHistory, FaFileExcel, FaQuestionCircle, FaExclamationTriangle, FaSearch, FaClipboardList, FaChartPie, FaChartLine, FaChevronLeft, FaChevronRight, FaUserCircle, FaEnvelope, FaWhatsapp, FaArrowUp, FaUser, FaSchool, FaTimes, FaIdCard, FaBook } from 'react-icons/fa';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, ArcElement, Filler);
@@ -76,8 +78,14 @@ const fmtTime = (d) => { if (!d) return ''; const dt = new Date(d); return `${St
             </div>
             <div>{sec(<FaTools style={{fontSize:12,color:'#f59e0b'}}/>,'Info Alat')}
               <div style={{display:'flex',gap:12,alignItems:'center',padding:'10px 14px',backgroundColor:'#fffbeb',borderRadius:10,border:'1px solid #fef3c7'}}>
-                <div style={{width:40,height:40,borderRadius:8,backgroundColor:'#fef3c7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><FaTools style={{fontSize:16,color:'#f59e0b'}}/></div>
-                <div><p style={{fontSize:14,fontWeight:600,color:'#92400e',margin:0}}>{a?.nama||'-'}</p>{a?.merek&&<p style={{fontSize:11,color:'#b45309',margin:'2px 0 0'}}>Merek: {a.merek}</p>}<p style={{fontSize:11,color:'#b45309',margin:'2px 0 0'}}>Jumlah: {data.jumlah||1} unit</p></div>
+                <div style={{width:48,height:48,borderRadius:10,backgroundColor:'#fef3c7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:'1px solid #fde68a',overflow:'hidden'}}>
+                  {a?.gambar ? <img src={a.gambar} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <FaTools style={{fontSize:18,color:'#f59e0b'}}/>}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontSize:14,fontWeight:600,color:'#92400e',margin:0}}>{a?.nama||'-'}</p>
+                  {a?.merek&&<p style={{fontSize:11,color:'#b45309',margin:'2px 0 0'}}>Merek: {a.merek}</p>}
+                  <p style={{fontSize:11,color:'#b45309',margin:'2px 0 0'}}>Jumlah: {data.jumlah||1} unit</p>
+                </div>
               </div>
             </div>
             {data.status==='kembali'&&(<div>{sec(<FaImage style={{fontSize:12,color:hasBukti?'#ef4444':'#9ca3af'}}/>,'Bukti Pengembalian')}
@@ -135,9 +143,10 @@ export default function PetugasView({
   const [trackSort, setTrackSort] = useState({ key: '', dir: 'asc' });
   const [trackPage, setTrackPage] = useState(1);
   const [trackLimit, setTrackLimit] = useState(10);
+  const [mapelAddTrigger, setMapelAddTrigger] = useState(0);
+
   const kondisiOrder = { baik: 1, kurang: 2, rusak: 3 };
   const statusOrder = { pending: 1, disetujui: 2, kembali: 3, ditolak: 4, dibatalkan: 5 };
-
   useEffect(() => { const el = mainRef.current; if (!el) return; const onScroll = () => setShowTopBtn(el.scrollTop > 300 || window.scrollY > 300); el.addEventListener('scroll', onScroll); window.addEventListener('scroll', onScroll); return () => { el.removeEventListener('scroll', onScroll); window.removeEventListener('scroll', onScroll); }; }, []);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0, grid: { color: '#f3f4f6' } } }, x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0 } } } };
@@ -166,13 +175,14 @@ export default function PetugasView({
       {showTopBtn && (<button type="button" onClick={scrollToTop} className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110" title="Ke atas"><FaArrowUp className="text-sm" /></button>)}
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900 capitalize">{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'laporan' ? 'Analisis Praktik Siswa' : activeTab === 'guru' ? 'Manajemen User' : activeTab.replace('-', ' ')}</h1>
-        <div className="flex gap-2">
-          {['dashboard', 'peminjaman'].includes(activeTab) && (<Button onClick={handleRefreshData} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm"><FaSync className="mr-2" />Refresh</Button>)}
-          {activeTab === 'alat' && (<Button onClick={handleAddAlat} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm"><FaPlus className="mr-2" />Tambah Alat</Button>)}
-          {activeTab === 'guru' && (<Button onClick={handleAddUser} className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm"><FaPlus className="mr-2" />Tambah User</Button>)}
-          {activeTab === 'laporan' && (<button type="button" onClick={handleExportFiltered} className="flex items-center px-4 py-2 rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"><FaFileExcel className="mr-2" />Export Filtered</button>)}
+      <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:16,background:'#fff',padding:16,borderRadius:12,boxShadow:'0 1px 3px rgba(0,0,0,0.06)',border:'1px solid #f3f4f6'}}>
+        <h1 style={{fontSize:24,fontWeight:700,color:'#111827',margin:0,textTransform:'capitalize'}}>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'laporan' ? 'Analisis Praktik Siswa' : activeTab === 'mapel' ? 'Manajemen Mapel' : activeTab === 'guru' ? 'Manajemen User' : activeTab.replace('-', ' ')}</h1>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+          {['dashboard','peminjaman'].includes(activeTab) && <button type="button" onClick={handleRefreshData} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',backgroundColor:'#2563eb',color:'#fff',border:'none',borderRadius:8,fontSize:13,cursor:'pointer'}}><FaSync/>Refresh</button>}
+          {activeTab === 'alat' && <button type="button" onClick={handleAddAlat} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',backgroundColor:'#2563eb',color:'#fff',border:'none',borderRadius:8,fontSize:13,cursor:'pointer'}}><FaPlus/>Tambah Alat</button>}
+          {activeTab === 'guru' && <button type="button" onClick={handleAddUser} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',backgroundColor:'#16a34a',color:'#fff',border:'none',borderRadius:8,fontSize:13,cursor:'pointer'}}><FaPlus/>Tambah User</button>}
+          {activeTab === 'laporan' && <button type="button" onClick={handleExportFiltered} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',backgroundColor:'#16a34a',color:'#fff',border:'none',borderRadius:8,fontSize:13,cursor:'pointer'}}><FaFileExcel/>Export Filtered</button>}
+          {activeTab === 'mapel' && <button type="button" onClick={() => setMapelAddTrigger(p => p + 1)} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',backgroundColor:'#7c3aed',color:'#fff',border:'none',borderRadius:8,fontSize:13,cursor:'pointer'}}><FaPlus/>Tambah Mapel</button>}
         </div>
       </div>
 
@@ -278,6 +288,9 @@ export default function PetugasView({
           </div>
         </div>
       )}
+
+      {/* ===== MAPEL ===== */}
+      {activeTab === 'mapel' && <PetugasMapelView user={user} addTrigger={mapelAddTrigger} userList={guruList}/>}
 
       {/* ===== MODALS ===== */}
       <Modal isOpen={alatModalOpen} onClose={handleCloseModal} title={selectedAlat ? 'Edit Alat' : 'Tambah Alat Baru'} size="xl"><AlatForm initialData={selectedAlat} onSubmit={selectedAlat ? handleEditAlat : handleCreateAlat} onCancel={handleCloseModal} loading={loading} /></Modal>

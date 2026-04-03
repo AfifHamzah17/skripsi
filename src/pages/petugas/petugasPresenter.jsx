@@ -72,8 +72,8 @@ export default function PetugasPresenter() {
   const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
 
   useEffect(() => {
-    const handleHash = () => { const tab = window.location.hash.replace('#/', '').split('/')[1] || 'dashboard'; setActiveTab(['dashboard', 'peminjaman', 'alat', 'guru', 'laporan'].includes(tab) ? tab : 'dashboard'); };
-    handleHash(); window.addEventListener('hashchange', handleHash);
+  const handleHash = () => { const tab = window.location.hash.replace('#/', '').split('/')[1] || 'dashboard'; setActiveTab(['dashboard', 'peminjaman', 'alat', 'guru', 'laporan', 'mapel'].includes(tab) ? tab : 'dashboard'); };    
+  handleHash(); window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 

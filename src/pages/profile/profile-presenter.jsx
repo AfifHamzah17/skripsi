@@ -1,206 +1,118 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getUserById, updateUserProfile, uploadAvatar } from './profile-model';
-import ProfileView from './profile-view';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../Context/AuthContext';
+import profileModel from './profile-model';
+import ProfileView from './profile-view';
 
-// Utility: convert cropped area ke Blob
-function getCroppedImg(imageSrc, pixelCrop) {
-  return new Promise((resolve, reject) => {
-    const image = new window.Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxSize = Math.max(pixelCrop.width, pixelCrop.height);
-      // Output 400x400 px — cukup tajam untuk avatar, tidak terlalu besar
-      const outputSize = 400;
-      canvas.width = outputSize;
-      canvas.height = outputSize;
+const createImage = (url) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.addEventListener('load', () => resolve(img));
+  img.addEventListener('error', reject);
+  img.src = url;
+});
 
-      const ctx = canvas.getContext('2d');
-
-      // Hitung posisi agar crop area pas di tengah canvas
-      const scaleX = outputSize / pixelCrop.width;
-      const scaleY = outputSize / pixelCrop.height;
-      const scale = Math.max(scaleX, scaleY);
-
-      const drawW = image.naturalWidth * scale;
-      const drawH = image.naturalHeight * scale;
-      const drawX = -pixelCrop.x * scale;
-      const drawY = -pixelCrop.y * scale;
-
-      ctx.drawImage(image, drawX, drawY, drawW, drawH);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Gagal membuat blob dari canvas'));
-            return;
-          }
-          resolve(blob);
-        },
-        'image/jpeg',
-        0.92 // kualitas — 92% bagus untuk foto, ukuran tetap kecil
-      );
-    };
-    image.onerror = () => reject(new Error('Gagal memuat gambar'));
-    image.src = imageSrc;
-  });
-}
+const getCroppedImg = async (imageSrc, pixelCrop) => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  return new Promise((resolve) => { canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85); });
+};
 
 export default function ProfilePresenter({ userId, currentUser }) {
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [statistics, setStatistics] = useState(null);
+  const isOwnProfile = authUser?.id === userId;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [statistics, setStatistics] = useState(null);
+  const [cropModal, setCropModal] = useState({ isOpen: false, imageSrc: null, crop: { x: 0, y: 0 }, zoom: 1 });
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  // Crop state
-  const [cropModal, setCropModal] = useState({
-    isOpen: false,
-    imageSrc: null,
-    crop: { x: 0, y: 0 },
-    zoom: 1,
-  });
-  const croppedAreaPixelsRef = useRef(null);
-
-  const isOwnProfile = currentUser?.id === userId;
-
-  // Fetch user
-  useEffect(() => {
-    if (!userId) return;
+  const loadProfile = useCallback(async () => {
     setLoading(true);
-    setError(null);
-
-    getUserById(userId)
-      .then((userData) => {
-        setUser(userData);
-        if (userData.peminjamans) {
-          const rows = userData.peminjamans;
-          setStatistics({
-            totalPinjam: rows.length,
-            dipinjam: rows.filter((r) => r.status === 'disetujui').length,
-            selesai: rows.filter((r) => r.status === 'kembali').length,
-          });
-        }
-      })
-      .catch((err) => {
-        setError(err.message || 'Gagal memuat profil');
-        toast.error(err.message || 'Gagal memuat profil');
-      })
-      .finally(() => setLoading(false));
+    setError('');
+    try {
+      const res = await profileModel.getProfile(userId);
+      // Backend return: { error: false, user: {...}, statistics: {...} }
+      if (res.error) { setError(res.message); }
+      else { setUser(res.user || res.result || res); setStatistics(res.statistics || null); }
+    } catch (e) { setError('Gagal memuat profil'); }
+    finally { setLoading(false); }
   }, [userId]);
 
-  const handleEditToggle = useCallback(() => {
-    setEditData({
-      nama: user?.nama || '',
-      email: user?.email || '',
-      nohp: user?.nohp || '',
-      nip: user?.nip || '',
-      nisn: user?.nisn || '',
-      kelas: user?.kelas || '',
-      mapel: Array.isArray(user?.mapel) ? user.mapel.join(', ') : (user?.mapel || ''),
-    });
-    setIsEditing(true);
-  }, [user]);
+  useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  const handleEditChange = useCallback((field, value) => {
-    setEditData((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (!editData.nama?.trim()) {
-      toast.error('Nama tidak boleh kosong');
-      return;
+  const handleEditToggle = () => {
+    if (!isEditing) {
+      setEditData({
+        nama: user.nama || '',
+        email: user.email || '',
+        nohp: user.nohp || '',
+        nip: user.nip || '',
+        nisn: user.nisn || '',
+        kelas: user.kelas || '',
+        mapel: Array.isArray(user.mapel) ? [...user.mapel] : user.mapel ? [user.mapel] : [],
+      });
     }
-    try {
-      const updated = await updateUserProfile(userId, editData);
-      setUser(updated);
-      setIsEditing(false);
-      toast.success('Profil berhasil diperbarui');
-    } catch (err) {
-      toast.error(err.message || 'Gagal memperbarui profil');
-    }
-  }, [userId, editData]);
+    setIsEditing(!isEditing);
+  };
 
-  const handleCancel = useCallback(() => {
-    setIsEditing(false);
-    setEditData({});
-  }, []);
+  const handleEditChange = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
 
-  // ── AVATAR: pilih file → buka crop modal ──
-  const handleAvatarSelect = useCallback((file) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file gambar yang diperbolehkan');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 5MB');
-      return;
-    }
-
+  const handleAvatarSelect = (file) => {
+    if (!file.type.startsWith('image/')) return toast.error('Hanya file gambar');
+    if (file.size > 2 * 1024 * 1024) return toast.error('Maks 2MB');
     const reader = new FileReader();
-    reader.onload = () => {
-      setCropModal({
-        isOpen: true,
-        imageSrc: reader.result,
-        crop: { x: 0, y: 0 },
-        zoom: 1,
-      });
-    };
+    reader.onloadend = () => setCropModal(prev => ({ ...prev, isOpen: true, imageSrc: reader.result }));
     reader.readAsDataURL(file);
-  }, []);
+  };
 
-  // ── Crop handlers ──
-  const handleCropChange = useCallback((crop) => {
-    setCropModal((prev) => ({ ...prev, crop }));
-  }, []);
+  const onCropComplete = useCallback((_, pixels) => setCroppedAreaPixels(pixels), []);
 
-  const handleZoomChange = useCallback((zoom) => {
-    setCropModal((prev) => ({ ...prev, zoom }));
-  }, []);
-
-  const handleCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    croppedAreaPixelsRef.current = croppedAreaPixels;
-  }, []);
-
-  const handleCropCancel = useCallback(() => {
-    setCropModal({ isOpen: false, imageSrc: null, crop: { x: 0, y: 0 }, zoom: 1 });
-    croppedAreaPixelsRef.current = null;
-  }, []);
-
-  // ── Crop confirm: generate blob → upload ──
-  const handleCropConfirm = useCallback(async () => {
-    const imageSrc = cropModal.imageSrc;
-    const pixelCrop = croppedAreaPixelsRef.current;
-
-    if (!imageSrc || !pixelCrop) return;
-
-    // Tutup modal crop dulu
-    setCropModal({ isOpen: false, imageSrc: null, crop: { x: 0, y: 0 }, zoom: 1 });
-
-    setAvatarUploading(true);
+  const handleCropConfirm = async () => {
     try {
-      // Generate blob dari crop area
-      const croppedBlob = await getCroppedImg(imageSrc, pixelCrop);
+      const blob = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels);
+      if (blob.size > 2 * 1024 * 1024) return toast.error('Hasil crop melebihi 2MB');
+      setAvatarUploading(true);
+      setCropModal(prev => ({ ...prev, isOpen: false }));
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const res = await profileModel.updateAvatar(userId, reader.result);
+        if (res.error) toast.error(res.message);
+        else { toast.success('Foto profil diperbarui'); loadProfile(); }
+        setAvatarUploading(false);
+      };
+      reader.readAsDataURL(blob);
+    } catch { toast.error('Gagal memproses gambar'); setAvatarUploading(false); }
+  };
 
-      // Buat File dari Blob (supaya FormData bisa baca nama file)
-      const croppedFile = new File([croppedBlob], `avatar-${userId}.jpg`, {
-        type: 'image/jpeg',
-      });
+  const handleCropCancel = () => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }));
+  const onCropChange = (crop) => setCropModal(prev => ({ ...prev, crop }));
+  const onZoomChange = (zoom) => setCropModal(prev => ({ ...prev, zoom }));
 
-      // Upload
-      const fotoUrl = await uploadAvatar(userId, croppedFile);
-      setUser((prev) => ({ ...prev, foto: fotoUrl }));
-      toast.success('Foto profil berhasil diperbarui');
-    } catch (err) {
-      toast.error(err.message || 'Gagal mengupload foto');
-    } finally {
-      setAvatarUploading(false);
-      croppedAreaPixelsRef.current = null;
-    }
-  }, [cropModal.imageSrc, userId]);
+  const handleSave = async () => {
+    if (!editData.nama?.trim()) return toast.error('Nama wajib diisi');
+    try {
+      // Backend updateOwnProfile sudah handle mapel di dalam payload
+      // Jadi cukup kirim sekali, tidak perlu saveTeacherMapel terpisah
+      const res = await profileModel.updateProfile(userId, editData);
+      if (res.error) return toast.error(res.message);
+      toast.success('Profil berhasil diperbarui');
+      setIsEditing(false);
+      loadProfile();
+    } catch (e) { toast.error('Gagal menyimpan'); }
+  };
+
+  const handleCancel = () => { setIsEditing(false); setEditData({}); };
 
   return (
     <ProfileView
@@ -217,9 +129,9 @@ export default function ProfilePresenter({ userId, currentUser }) {
       avatarUploading={avatarUploading}
       onAvatarSelect={handleAvatarSelect}
       cropModal={cropModal}
-      onCropChange={handleCropChange}
-      onZoomChange={handleZoomChange}
-      onCropComplete={handleCropComplete}
+      onCropChange={onCropChange}
+      onZoomChange={onZoomChange}
+      onCropComplete={onCropComplete}
       onCropConfirm={handleCropConfirm}
       onCropCancel={handleCropCancel}
       statistics={statistics}

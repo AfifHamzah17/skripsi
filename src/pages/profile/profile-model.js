@@ -1,53 +1,24 @@
-// pages/profile/profile-model.js
-const API_URL = import.meta.env.VITE_API_BASE + '/users';
+const API = () => import.meta.env.VITE_API_BASE;
+const authH = () => { const t = localStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
+const jsonH = () => ({ 'Content-Type': 'application/json', ...authH() });
+const safe = async (r) => { if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || 'Error ' + r.status); } return r.json(); };
 
-async function apiFetch(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
-  const headers = { ...options.headers };
-
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
-  }
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.message || `HTTP ${res.status}`);
-  }
-
-  return data;
-}
-
-export const getUserById = async (id) => {
-  const res = await apiFetch(`/profile/${id}`);
-  return res.user;
+const getProfile = async (userId) => {
+  const base = await API();
+  // /users/profile/:id  ← bukan /users/:id
+  return fetch(base + '/users/profile/' + userId, { headers: authH() }).then(safe).catch(e => ({ error: true, message: e.message }));
 };
 
-export const updateUserProfile = async (id, data) => {
-  const res = await apiFetch(`/profile/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-  return res.user;
+const updateProfile = async (userId, data) => {
+  const base = await API();
+  // /users/profile/:id  ← bukan /users/:id
+  return fetch(base + '/users/profile/' + userId, { method: 'PUT', headers: jsonH(), body: JSON.stringify(data) }).then(safe).catch(e => ({ error: true, message: e.message }));
 };
 
-export const uploadAvatar = async (id, file) => {
-  const formData = new FormData();
-  formData.append('gambar', file);
-  formData.append('subfolder', 'profile');
-
-  const res = await apiFetch(`/${id}/avatar`, {
-    method: 'POST',
-    body: formData,
-  });
-  return res.url;
+const updateAvatar = async (userId, base64Image) => {
+  const base = await API();
+  // /users/profile/:id/avatar  ← endpoint baru di routes
+  return fetch(base + '/users/profile/' + userId + '/avatar', { method: 'PUT', headers: jsonH(), body: JSON.stringify({ foto: base64Image }) }).then(safe).catch(e => ({ error: true, message: e.message }));
 };
+
+export default { getProfile, updateProfile, updateAvatar };

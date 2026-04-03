@@ -255,17 +255,27 @@ const AlatForm = ({
       {/* Deskripsi */}
       <div>
         <label htmlFor="deskripsi" className="block text-sm font-medium text-gray-700 mb-1">
-          Deskripsi
+          Deskripsi <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>({formData.deskripsi.length}/1000)</span>
         </label>
         <textarea
           id="deskripsi"
           name="deskripsi"
           value={formData.deskripsi}
-          onChange={(e) => handleChange('deskripsi', e.target.value)}
+          onChange={(e) => {
+            if (e.target.value.length > 1000) return;
+            handleChange('deskripsi', e.target.value);
+          }}
           rows={3}
+          maxLength={1000}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Masukkan deskripsi alat"
+          placeholder="Masukkan deskripsi alat (maks 1000 karakter)"
+          style={{resize:'vertical'}}
         />
+        {formData.deskripsi.length >= 950 && (
+          <p style={{fontSize:11,color:formData.deskripsi.length >= 1000 ? '#ef4444' : '#f59e0b',margin:'4px 0 0'}}>
+            {formData.deskripsi.length >= 1000 ? 'Batas maksimal tercapai' : `Sisa ${1000 - formData.deskripsi.length} karakter`}
+          </p>
+        )}
       </div>
 
       {/* Gambar */}

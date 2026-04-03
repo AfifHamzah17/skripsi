@@ -1,3 +1,4 @@
+// src/pages/guru/guru-model.js
 const API_BASE = import.meta.env.VITE_API_BASE;
 
 const makeRequest = async (url, options = {}) => {

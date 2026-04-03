@@ -1,108 +1,24 @@
-// src/pages/siswa/siswaModel.js
 import { getAlat } from '../models/alat-model';
 import { createPeminjaman, getMyPeminjaman } from '../models/peminjaman-model';
 
-export const DAFTAR_MAPEL = [
-  'Kimia',
-  'Fisika',
-  'Biologi',
-  'Matematika',
-  'Bahasa Indonesia',
-  'Bahasa Inggris',
-  'Teknik Elektro',
-  'Teknik Mesin',
-  'Teknik Sipil',
-  'Akuntansi',
-  'Administrasi Perkantoran',
-  'Multimedia',
-  'Rekayasa Perangkat Lunak',
-  'Teknik Komputer dan Jaringan',
-];
+export const fetchAlats = async () => await getAlat();
+export const fetchMyPeminjaman = async () => await getMyPeminjaman();
+export const submitPeminjaman = async (data) => await createPeminjaman(data);
 
-export const fetchAlats = async () => {
-  const response = await getAlat();
-  return response;
+export const cancelPeminjaman = async (id) => {
+  const r = await fetch(import.meta.env.VITE_API_BASE + '/peminjaman/' + id + '/batal', { method: 'PUT', headers: { Authorization: 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' } });
+  const d = await r.json(); if (!r.ok) throw new Error(d.message || 'Gagal'); return d;
 };
 
-export const fetchMyPeminjaman = async () => {
-  const response = await getMyPeminjaman();
-  return response;
-};
-
-export const submitPeminjaman = async (data) => {
-  const response = await createPeminjaman(data);
-  return response;
-};
-
-// ========== Cancel Peminjaman ==========
-export const cancelPeminjaman = async (peminjamanId) => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(import.meta.env.VITE_API_BASE + '/peminjaman/' + peminjamanId + '/batal', {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Gagal membatalkan peminjaman');
-  }
-  return data;
-};
-// ========================================
-
-// ========== Fetch Guru By Mapel ==========
 export const fetchGuruByMapel = async (mapel) => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(import.meta.env.VITE_API_BASE + '/teachers/mapel/' + mapel, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch teachers: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.result || [];
-};
-// ========================================
-
-export const processPeminjamanData = (peminjamanData, alatsData) => {
-  if (!peminjamanData) {
-    return [];
-  }
-
-  return peminjamanData.map((p) => {
-    const alatDetail = alatsData?.find((a) => a.id === p.alatId);
-    return {
-      ...p,
-      alat: alatDetail || null,
-    };
-  });
+  const r = await fetch(import.meta.env.VITE_API_BASE + '/teachers/mapel/' + mapel, { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+  if (!r.ok) throw new Error('Failed: ' + r.status);
+  const d = await r.json(); return d.result || [];
 };
 
-export const calculateStats = (alats, peminjamans) => ({
-  totalAlat: alats.length,
-  availableAlat: alats.filter((a) => a.stok > 0).length,
-  pendingPeminjaman: peminjamans.filter((p) => p.status === 'pending').length,
-  approvedPeminjaman: peminjamans.filter((p) => p.status === 'disetujui').length,
-});
+export const processPeminjamanData = (data, alats) => data ? data.map(p => ({ ...p, alat: alats?.find(a => a.id === p.alatId) || null })) : [];
 
-export const filterAlats = (alats, searchTerm, category) => {
-  return alats.filter((alat) => {
-    const matchesSearch = alat?.nama?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = category === 'all' || alat?.kategori === category;
-    return matchesSearch && matchesCategory;
-  });
-};
+export const calculateStats = (alats, pinjam) => ({ totalAlat: alats.length, availableAlat: alats.filter(a => a.stok > 0).length, pendingPeminjaman: pinjam.filter(p => p.status === 'pending').length, approvedPeminjaman: pinjam.filter(p => p.status === 'disetujui').length });
 
-export const filterPeminjamans = (peminjamans, searchTerm, statusFilter) => peminjamans.filter((peminjaman) => {
-  const matchesSearch = peminjaman.alat?.nama?.toLowerCase().includes(searchTerm.toLowerCase())
-    || peminjaman.mapel.toLowerCase().includes(searchTerm.toLowerCase());
-  const matchesStatus = statusFilter === 'all' || peminjaman.status === statusFilter;
-  return matchesSearch && matchesStatus;
-});
+export const filterAlats = (alats, q, cat) => alats.filter(a => a?.nama?.toLowerCase().includes(q.toLowerCase()) && (cat === 'all' || a?.kategori === cat));
+export const filterPeminjamans = (pinjam, q, status) => pinjam.filter(p => (p.alat?.nama?.toLowerCase().includes(q.toLowerCase()) || p.mapel?.toLowerCase().includes(q.toLowerCase())) && (status === 'all' || p.status === status));

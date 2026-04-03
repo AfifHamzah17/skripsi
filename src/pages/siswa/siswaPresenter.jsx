@@ -1,119 +1,91 @@
-// src/pages/siswa/siswaPresenter.jsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import SiswaView from './siswaView';
-import { fetchAlats, fetchMyPeminjaman, submitPeminjaman, cancelPeminjaman, fetchGuruByMapel, processPeminjamanData, calculateStats, filterAlats, filterPeminjamans, DAFTAR_MAPEL } from './siswaModel';
+import { getAllMapel } from '../models/mapel-model';
+import { fetchAlats, fetchMyPeminjaman, submitPeminjaman, cancelPeminjaman, fetchGuruByMapel, processPeminjamanData, calculateStats, filterAlats, filterPeminjamans } from './siswaModel';
 
 export default function SiswaPresenter({ user, activeTab }) {
   const [alats, setAlats] = useState([]);
-  const [peminjamans, setPeminjamans] = useState([]);
+  const [pinjam, setPinjam] = useState([]);
+  const [mapelList, setMapelList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAlat, setSelectedAlat] = useState(null);
+  const [selAlat, setSelAlat] = useState(null);
   const [jumlah, setJumlah] = useState(1);
-  const [message, setMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMapel, setSelectedMapel] = useState('');
+  const [msg, setMsg] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusF, setStatusF] = useState('all');
+  const [catF, setCatF] = useState('all');
+  const [modal, setModal] = useState(false);
+  const [selMapel, setSelMapel] = useState('');
   const [gurus, setGurus] = useState([]);
-  const [selectedGuru, setSelectedGuru] = useState('');
+  const [selGuru, setSelGuru] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedDetailAlat, setSelectedDetailAlat] = useState(null);
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [detailModal, setDetailModal] = useState(false);
+  const [detailAlat, setDetailAlat] = useState(null);
+  const [cancelModal, setCancelModal] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
-  const [riwayatSort, setRiwayatSort] = useState({ key: null, dir: 'asc' });
+  const [rSort, setRSort] = useState({ key: null, dir: 'asc' });
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      setLoading(true); setMessage('');
-      const [alatsData, peminjamanData] = await Promise.all([fetchAlats(), fetchMyPeminjaman()]);
-      if (!alatsData.error) setAlats(alatsData.result || []);
-      else setMessage(alatsData.message);
-      if (!peminjamanData.error) setPeminjamans(processPeminjamanData(peminjamanData.result, alatsData.result));
-      else setPeminjamans(peminjamanData.result || []);
-    } catch { setMessage('Gagal mengambil data'); }
+      setLoading(true); setMsg('');
+      const [a, p, m] = await Promise.all([fetchAlats(), fetchMyPeminjaman(), getAllMapel()]);
+      if (!a.error) setAlats(a.result || []); else setMsg(a.message);
+      if (!p.error) setPinjam(processPeminjamanData(p.result, a.result)); else setPinjam(p.result || []);
+      if (!m.error) { const names = (m.result || []).map(x => x.nama).filter(Boolean); setMapelList(names.length ? names : ['Tidak ada data mapel']); }
+      else setMapelList(['Tidak ada data mapel']);
+    } catch { setMsg('Gagal memuat data'); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { if (isModalOpen) { setSelectedMapel(''); setGurus([]); setSelectedGuru(''); setJumlah(1); setMessage(''); } }, [isModalOpen]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (modal) { setSelMapel(''); setGurus([]); setSelGuru(''); setJumlah(1); setMsg(''); } }, [modal]);
 
-  const handleFetchGuruByMapel = useCallback(async (mapel) => { if (!mapel) { setGurus([]); return; } try { setGurus(await fetchGuruByMapel(mapel)); } catch { setGurus([]); } }, []);
-  useEffect(() => { handleFetchGuruByMapel(selectedMapel); }, [selectedMapel, handleFetchGuruByMapel]);
+  const loadGuru = useCallback(async (m) => { if (!m) { setGurus([]); return; } try { setGurus(await fetchGuruByMapel(m)); } catch { setGurus([]); } }, []);
+  useEffect(() => { loadGuru(selMapel); }, [selMapel, loadGuru]);
 
-  const handleViewDetail = (alat) => { setSelectedDetailAlat(alat); setDetailModalOpen(true); };
-  const handleCloseDetailModal = () => { setDetailModalOpen(false); setSelectedDetailAlat(null); };
-  const handlePinjamClick = (alat) => { setSelectedAlat(alat); setIsModalOpen(true); };
-  const handleMapelChange = (e) => { setSelectedMapel(e.target.value); setSelectedGuru(''); };
-  const handleGuruChange = (e) => { setSelectedGuru(e.target.value); };
-  const handleJumlahChange = (e) => { const v = parseInt(e.target.value, 10); if (v > 0 && v <= selectedAlat?.stok) setJumlah(v); };
+  const openDetail = a => { setDetailAlat(a); setDetailModal(true); };
+  const closeDetail = () => { setDetailModal(false); setDetailAlat(null); };
+  const openPinjam = a => { setSelAlat(a); setModal(true); };
+  const onMapelChange = e => { setSelMapel(e.target.value); setSelGuru(''); };
+  const onGuruChange = e => setSelGuru(e.target.value);
+  const onJumlahChange = e => { const v = +e.target.value; if (v > 0 && v <= selAlat?.stok) setJumlah(v); };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    if (!selectedAlat || !selectedMapel || !selectedGuru || jumlah <= 0) return setMessage('Harap lengkapi semua field');
-    setSubmitting(true); setMessage('');
+    if (!selAlat || !selMapel || !selGuru || jumlah <= 0) return setMsg('Lengkapi semua field');
+    setSubmitting(true); setMsg('');
     try {
-      const res = await submitPeminjaman({ alatId: selectedAlat.id, jumlah, mapel: selectedMapel, guruId: selectedGuru });
-      if (res.error) { setMessage(res.message); toast.error(res.message); }
-      else { toast.success(`Peminjaman "${selectedAlat.nama}" berhasil diajukan!`); setIsModalOpen(false); setSelectedAlat(null); await fetchData(); }
-    } catch { setMessage('Gagal melakukan peminjaman'); toast.error('Gagal. Coba lagi.'); }
+      const r = await submitPeminjaman({ alatId: selAlat.id, jumlah, mapel: selMapel, guruId: selGuru });
+      if (r.error) { setMsg(r.message); toast.error(r.message); }
+      else { toast.success(`"${selAlat.nama}" diajukan!`); setModal(false); setSelAlat(null); await load(); }
+    } catch { setMsg('Gagal'); toast.error('Coba lagi'); }
     finally { setSubmitting(false); }
   };
 
-  const handleCloseModal = () => { setIsModalOpen(false); setMessage(''); };
-  const handleCancelClick = (p) => { setCancelTarget(p); setCancelModalOpen(true); };
-  const handleCloseCancelModal = () => { setCancelModalOpen(false); setCancelTarget(null); };
-  const handleConfirmCancel = async () => {
-    if (!cancelTarget) return;
-    setCancelling(true);
-    try { await cancelPeminjaman(cancelTarget.id); toast.success(`Peminjaman "${cancelTarget.alat?.nama}" dibatalkan`); setCancelModalOpen(false); setCancelTarget(null); await fetchData(); }
-    catch (e) { toast.error(e.message || 'Gagal membatalkan'); }
+  const openCancel = p => { setCancelTarget(p); setCancelModal(true); };
+  const confirmCancel = async () => {
+    if (!cancelTarget) return; setCancelling(true);
+    try { await cancelPeminjaman(cancelTarget.id); toast.success('Dibatalkan'); setCancelModal(false); setCancelTarget(null); await load(); }
+    catch (e) { toast.error(e.message || 'Gagal'); }
     finally { setCancelling(false); }
   };
 
-  // --- Sort riwayat ---
-  const sortData = useCallback((data, sort, getVal) => {
-    if (!sort.key) return data;
-    return [...data].sort((a, b) => {
-      let va = getVal(a, sort.key), vb = getVal(b, sort.key);
-      if (typeof va === 'number') return sort.dir === 'asc' ? va - vb : vb - va;
-      va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase();
-      return va < vb ? (sort.dir === 'asc' ? -1 : 1) : va > vb ? (sort.dir === 'asc' ? 1 : -1) : 0;
+  const handleRiwayatSort = k => setRSort(p => ({ key: k, dir: p.key === k && p.dir === 'asc' ? 'desc' : 'asc' }));
+
+  const sorted = useMemo(() => {
+    if (!rSort.key) return filterPeminjamans(pinjam, search, statusF);
+    return [...filterPeminjamans(pinjam, search, statusF)].sort((a, b) => {
+      let va, vb;
+      if (rSort.key === 'jumlah') { va = a.jumlah; vb = b.jumlah; return rSort.dir === 'asc' ? va - vb : vb - va; }
+      if (rSort.key === 'tanggal') { va = new Date(a.tanggalPeminjaman || 0).getTime(); vb = new Date(b.tanggalPeminjaman || 0).getTime(); }
+      else { va = String(rSort.key === 'alat' ? a.alat?.nama : rSort.key === 'mapel' ? a.mapel : a.status || '').toLowerCase(); vb = String(rSort.key === 'alat' ? b.alat?.nama : rSort.key === 'mapel' ? b.mapel : b.status || '').toLowerCase(); }
+      if (va < vb) return rSort.dir === 'asc' ? -1 : 1; if (va > vb) return rSort.dir === 'asc' ? 1 : -1; return 0;
     });
-  }, []);
-
-  const getRiwayatVal = useCallback((p, key) => {
-    if (key === 'alat') return p.alat?.nama; if (key === 'jumlah') return p.jumlah;
-    if (key === 'mapel') return p.mapel; if (key === 'tanggal') return new Date(p.tanggalPeminjaman).getTime();
-    if (key === 'status') return p.status;
-    return '';
-  }, []);
-
-
-  const handleRiwayatSort = useCallback((key) => { setRiwayatSort(p => ({ key, dir: p.key === key && p.dir === 'asc' ? 'desc' : 'asc' })); }, []);
-  const stats = calculateStats(alats, peminjamans);
-  const filteredAlatsList = filterAlats(alats, searchTerm, filterCategory);
-  const filteredPeminjamansList = filterPeminjamans(peminjamans, searchTerm, statusFilter);
-
-  const sortedPeminjamans = useMemo(() => sortData(filteredPeminjamansList, riwayatSort, getRiwayatVal), [filteredPeminjamansList, riwayatSort, sortData, getRiwayatVal]);
+  }, [pinjam, search, statusF, rSort]);
 
   return (
-    <SiswaView
-      user={user} loading={loading} message={message} activeTab={activeTab}
-      searchTerm={searchTerm} setSearchTerm={setSearchTerm} statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-      stats={stats} filteredAlats={filteredAlatsList} filteredPeminjamans={sortedPeminjamans}
-      isModalOpen={isModalOpen} selectedAlat={selectedAlat} jumlah={jumlah} selectedMapel={selectedMapel}
-      daftarMapel={DAFTAR_MAPEL} gurus={gurus} selectedGuru={selectedGuru} submitting={submitting}
-      onPinjamClick={handlePinjamClick} onMapelChange={handleMapelChange} onGuruChange={handleGuruChange}
-      onJumlahChange={handleJumlahChange} onSubmit={handleSubmit} onCloseModal={handleCloseModal}
-      detailModalOpen={detailModalOpen} selectedDetailAlat={selectedDetailAlat} onViewDetail={handleViewDetail}
-      onCloseDetailModal={handleCloseDetailModal} filterCategory={filterCategory} setFilterCategory={setFilterCategory}
-      cancelModalOpen={cancelModalOpen} cancelTarget={cancelTarget} cancelling={cancelling}
-      onCancelClick={handleCancelClick} onConfirmCancel={handleConfirmCancel} onCloseCancelModal={handleCloseCancelModal}
-      riwayatSort={riwayatSort} handleRiwayatSort={handleRiwayatSort}
-    />
+    <SiswaView user={user} loading={loading} message={msg} activeTab={activeTab} searchTerm={search} setSearchTerm={setSearch} statusFilter={statusF} setStatusFilter={setStatusF} stats={calculateStats(alats, pinjam)} filteredAlats={filterAlats(alats, search, catF)} filteredPeminjamans={sorted} isModalOpen={modal} selectedAlat={selAlat} jumlah={jumlah} selectedMapel={selMapel} daftarMapel={mapelList} gurus={gurus} selectedGuru={selGuru} submitting={submitting} onPinjamClick={openPinjam} onMapelChange={onMapelChange} onGuruChange={onGuruChange} onJumlahChange={onJumlahChange} onSubmit={handleSubmit} onCloseModal={() => setModal(false)} detailModalOpen={detailModal} selectedDetailAlat={detailAlat} onViewDetail={openDetail} onCloseDetailModal={closeDetail} filterCategory={catF} setFilterCategory={setCatF} cancelModalOpen={cancelModal} cancelTarget={cancelTarget} cancelling={cancelling} onCancelClick={openCancel} onConfirmCancel={confirmCancel} onCloseCancelModal={() => { setCancelModal(false); setCancelTarget(null); }} riwayatSort={rSort} handleRiwayatSort={handleRiwayatSort} />
   );
 }
