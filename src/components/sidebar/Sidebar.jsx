@@ -17,7 +17,7 @@ export default function Sidebar({ user, onLogout, isOpen, toggleSidebar, isColla
       case 'siswa': return [{to:'siswa/pinjam',icon:<FaTools/>,label:'Pinjam Alat'},{to:'siswa/riwayat',icon:<FaHistory/>,label:'Riwayat Peminjaman'}];
       case 'guru': return [{to:'guru/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'guru/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'guru/mapel',icon:<FaBook/>,label:'Mata Pelajaran'}];
       case 'admin': return [{to:'admin/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'admin/alat',icon:<FaTools/>,label:'Kelola Alat'},{to:'admin/laporan',icon:<FaChartBar/>,label:'Laporan'}];
-      case 'petugas': return [{to:'petugas/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'petugas/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'petugas/alat',icon:<FaTools/>,label:'Manajemen Alat'},{to:'petugas/guru',icon:<FaChalkboardTeacher/>,label:'Data Guru'},{to:'petugas/laporan',icon:<FaChartBar/>,label:'Analisis Praktik Siswa'},{to:'petugas/mapel',icon:<FaBook/>,label:'Manajemen Mapel'}];
+      case 'petugas': return [{to:'petugas/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'petugas/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'petugas/alat',icon:<FaTools/>,label:'Manajemen Alat'},{to:'petugas/guru',icon:<FaChalkboardTeacher/>,label:'Manajemen Akun'},{to:'petugas/mapel',icon:<FaBook/>,label:'Manajemen Mapel'},{to:'petugas/laporan',icon:<FaChartBar/>,label:'Analisis Praktik Siswa'}];
       default: return [];
     }
   };

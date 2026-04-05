@@ -1,7 +1,15 @@
 // src/pages/auth/authModel.js
 const API_BASE = import.meta.env.VITE_API_BASE;
 
-// ===================== AUTH =====================
+export const checkBackendConnection = async () => {
+  try {
+    const response = await fetch(`${API_BASE}`, { method: 'GET' });
+    return response.ok;
+  } catch (e) {
+    return false;
+  }
+};
+
 export const registerUser = async (formData) => {
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
@@ -9,14 +17,11 @@ export const registerUser = async (formData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
     });
-    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
-    
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Register error:', error);
     return { error: true, message: error.message || 'Gagal terhubung ke server' };
@@ -30,54 +35,28 @@ export const loginUser = async ({ email, password }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = 'Login gagal';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        // Use default error message
-      }
+      try { const errorData = JSON.parse(errorText); errorMessage = errorData.message || errorMessage; } catch (e) {}
       throw new Error(errorMessage);
     }
-    
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Login error:', error);
     return { error: true, message: error.message || 'Gagal terhubung ke server' };
   }
 };
 
-export const checkBackendConnection = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/`, { method: 'GET' });
-    return response.ok;
-  } catch (e) {
-    return false;
-  }
-};
-
-// ===================== USERS (dari model lama) =====================
 export const getAllUsers = async () => {
   try {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE}/users`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
     });
-    
     const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Gagal mengambil data users');
-    }
-    
+    if (!response.ok) throw new Error(data.message || 'Gagal mengambil data users');
     return data;
   } catch (error) {
     console.error('Error fetching users:', error);

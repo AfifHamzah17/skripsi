@@ -1,3 +1,4 @@
+// src/pages/profile/profile-model.js
 const API = () => import.meta.env.VITE_API_BASE;
 const authH = () => { const t = localStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
 const jsonH = () => ({ 'Content-Type': 'application/json', ...authH() });

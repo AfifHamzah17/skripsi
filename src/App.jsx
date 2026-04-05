@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import Router from './routes/router';
 import Sidebar from './components/sidebar/Sidebar';
@@ -7,6 +6,7 @@ import { AuthProvider, useAuth } from './Context/AuthContext';
 import { FaBars } from 'react-icons/fa';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import NotifBell from './components/navbar/NotifBell';
 
 function AppContent() {
   const { user, logout, loading, isAuthenticated } = useAuth();
@@ -43,12 +43,15 @@ function AppContent() {
         <header style={{height:64,background:'#fff',boxShadow:'0 1px 2px rgba(0,0,0,0.05)',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',zIndex:10,flexShrink:0,borderBottom:'1px solid #e5e7eb'}}>
           <div style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
             {!isMobile?null:<button type="button" onClick={()=>setIsSidebarOpen(!isSidebarOpen)} style={{background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:4,display:'flex'}}><FaBars size={20}/></button>}
-             <a href="#/"> <h1 style={{fontSize:isMobile?16:20,fontWeight:700,color:'#1f2937',margin:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{isMobile?'SIPINJAM':'Sistem Peminjaman SMKN 1 Percut Sei Tuan'}</h1> </a>
+            <a href="#/"><h1 style={{fontSize:isMobile?16:20,fontWeight:700,color:'#1f2937',margin:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{isMobile?'SIPINJAM':'Sistem Peminjaman SMKN 1 Percut Sei Tuan'}</h1></a>
           </div>
-          <a href="#/profile/my" style={{display:'flex',alignItems:'center',gap:10,flexShrink:0,textDecoration:'none',cursor:'pointer'}}>
-            {!isMobile&&<div style={{textAlign:'right'}}><p style={{margin:0,fontSize:14,fontWeight:500,color:'#374151',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:160}}>{user?.nama||user?.username}</p><p style={{margin:0,fontSize:12,color:'#6b7280',textTransform:'capitalize'}}>{user?.role}</p></div>}
-            {user?.foto?<img src={user.foto} alt="Profile" style={{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'2px solid #e5e7eb'}}/>:<div style={{width:36,height:36,borderRadius:'50%',background:'#dbeafe',display:'flex',alignItems:'center',justifyContent:'center',color:'#2563eb',fontWeight:600,fontSize:14,flexShrink:0}}>{(user?.nama||user?.username||'?').charAt(0).toUpperCase()}</div>}
-          </a>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <NotifBell />
+            <a href="#/profile/my" style={{display:'flex',alignItems:'center',gap:10,flexShrink:0,textDecoration:'none',cursor:'pointer'}}>
+              {!isMobile&&<div style={{textAlign:'right'}}><p style={{margin:0,fontSize:14,fontWeight:500,color:'#374151',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:160}}>{user?.nama||user?.username}</p><p style={{margin:0,fontSize:12,color:'#6b7280',textTransform:'capitalize'}}>{user?.role}</p></div>}
+              {user?.foto?<img src={user.foto} alt="Profile" style={{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'2px solid #e5e7eb'}}/>:<div style={{width:36,height:36,borderRadius:'50%',background:'#dbeafe',display:'flex',alignItems:'center',justifyContent:'center',color:'#2563eb',fontWeight:600,fontSize:14,flexShrink:0}}>{(user?.nama||user?.username||'?').charAt(0).toUpperCase()}</div>}
+            </a>
+          </div>
         </header>
         <main id="main-content" style={{flex:1,overflowY:'auto',overflowX:'hidden',background:'#f9fafb'}}>
           <Router key={routeHash} user={user} isAuthenticated={isAuthenticated} />

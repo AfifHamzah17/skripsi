@@ -1,3 +1,4 @@
+// src/pages/profile/profile-view.jsx
 import React, { useRef, useState } from 'react';
 import Cropper from 'react-easy-crop';
 import { FaUser, FaEnvelope, FaWhatsapp, FaCamera, FaEdit, FaSave, FaTimes, FaTools, FaHistory, FaCheckCircle, FaSchool, FaBook, FaIdCard, FaShieldAlt } from 'react-icons/fa';
