@@ -1,9 +1,10 @@
+// src/pages/auth/authView.jsx
 import React, { useEffect, useState } from "react";
 import { handleLogin, handleRegister, validateRegisterForm, prepareRegisterData, calculatePasswordStrength } from "./authPresenter";
 import { checkBackendConnection } from "./authModel";
 import { toast } from "sonner";
 import { useAuth } from "../../Context/AuthContext";
-import { FaBoxOpen, FaUserPlus, FaArrowLeft, FaUser, FaLock, FaEye, FaEyeSlash, FaIdCard, FaEnvelope, FaPhone, FaUserFriends, FaChevronDown, FaExclamationCircle, FaSpinner, FaWhatsapp } from "react-icons/fa";
+import { FaBoxOpen, FaUserPlus, FaArrowLeft, FaUser, FaLock, FaEye, FaEyeSlash, FaIdCard, FaEnvelope, FaPhone, FaExclamationCircle, FaSpinner, FaWhatsapp } from "react-icons/fa";
 import "./auth.css";
 
 const fmtPhone = v => { let d = v.replace(/\D/g, ''); if (!d.startsWith('0')) d = '0' + d; d = d.slice(0, 13); if (d.length <= 4) return d; if (d.length <= 8) return d.slice(0, 4) + '-' + d.slice(4); return d.slice(0, 4) + '-' + d.slice(4, 8) + '-' + d.slice(8); };
@@ -92,27 +93,10 @@ export default function AuthView() {
   const [showCP, setShowCP] = useState(false);
   const [focus, setFocus] = useState(null);
   const [loginF, setLoginF] = useState({ email: "", password: "" });
-  const [regF, setRegF] = useState({ nama: "", email: "", password: "", confirmPassword: "", nohp: "", role: "", tingkat: "", jurusan: "", nomor: "", kelas: "", nisn: "", nip: "", mapel: [], posisi: "" });
-  const [mapelList, setMapelList] = useState([]);
-  const [mapelLoad, setMapelLoad] = useState(false);
+  const [regF, setRegF] = useState({ nama: "", email: "", password: "", confirmPassword: "", nohp: "", tingkat: "", jurusan: "", nomor: "", kelas: "", nisn: "" });
   const { login } = useAuth();
 
   useEffect(() => { checkBackendConnection().then(setBackendSt); }, []);
-  useEffect(() => {
-    const f = async () => {
-      setMapelLoad(true);
-      try {
-        const r = await fetch(import.meta.env.VITE_API_BASE + '/mapel/public');
-        if (r.ok) {
-          const d = await r.json();
-          const a = Array.isArray(d) ? d : d?.result ? (Array.isArray(d.result) ? d.result : []) : [];
-          setMapelList(a.filter(Boolean));
-        }
-      } catch {}
-      setMapelLoad(false);
-    };
-    f();
-  }, []);
   useEffect(() => {
     const { tingkat, jurusan, nomor } = regF;
     setRegF(p => ({ ...p, kelas: (tingkat && jurusan && nomor) ? `${tingkat} ${jurusan} ${nomor}` : '' }));
@@ -122,8 +106,7 @@ export default function AuthView() {
   const onLC = e => setLoginF(p => ({ ...p, [e.target.name]: e.target.value }));
   const onRC = e => {
     const { name, value } = e.target;
-    if (name === 'mapel') { const c = Array.isArray(regF.mapel) ? regF.mapel : []; setRegF(p => ({ ...p, mapel: c.includes(value) ? c.filter(i => i !== value) : [...c, value] })); }
-    else if (name === 'nohp') setRegF(p => ({ ...p, nohp: fmtPhone(value) }));
+    if (name === 'nohp') setRegF(p => ({ ...p, nohp: fmtPhone(value) }));
     else setRegF(p => ({ ...p, [name]: value }));
     if (fErr[name]) setFErr(p => ({ ...p, [name]: '' }));
   };
@@ -140,12 +123,12 @@ export default function AuthView() {
 
   const onRS = e => {
     e.preventDefault(); setRegErr(""); setFErr({});
-    const parsed = { ...regF, nohp: parsePhone(regF.nohp) };
+    const parsed = { ...regF, nohp: parsePhone(regF.nohp), role: 'siswa' };
     const { isValid, errors } = validateRegisterForm(parsed);
     if (!isValid) { setFErr(errors); const f = Object.values(errors)[0]; setRegErr(f); toast.error(f); return; }
     setLoading(true);
     handleRegister(prepareRegisterData(parsed),
-      m => { setLoading(false); toast.success(m); toggle(); setRegF({ nama: "", email: "", password: "", confirmPassword: "", nohp: "", role: "", tingkat: "", jurusan: "", nomor: "", kelas: "", nisn: "", nip: "", mapel: [], posisi: "" }); },
+      m => { setLoading(false); toast.success(m); toggle(); setRegF({ nama: "", email: "", password: "", confirmPassword: "", nohp: "", tingkat: "", jurusan: "", nomor: "", kelas: "", nisn: "" }); },
       m => { setLoading(false); setRegErr(m); toast.error(m || "Registrasi gagal!"); }
     );
   };
@@ -216,14 +199,7 @@ export default function AuthView() {
                   </Grp>
                 </div>
 
-                <Grp>
-                  <Label req>Role</Label>
-                  <Wrap><Icon><FaUserFriends /></Icon><select name="role" value={regF.role} onChange={onRC} onFocus={() => setFocus('role')} onBlur={() => setFocus(null)} style={{ ...iS('role'), appearance: 'none', paddingRight: '2rem', cursor: 'pointer' }}><option value="">-- Pilih role --</option><option value="siswa">Siswa</option><option value="guru">Guru</option></select><FaChevronDown style={{ position: 'absolute', top: '50%', right: '0.75rem', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '0.75rem', pointerEvents: 'none' }} /></Wrap>
-                  <Err msg={fErr.role} />
-                </Grp>
-
-                {regF.role === "siswa" && (<>
-                  <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#4b5563', marginBottom: '0.25rem' }}>Kelas <span style={{ color: '#ef4444' }}> *</span></label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                       <div>
@@ -259,33 +235,6 @@ export default function AuthView() {
                     </div>
                     {fErr.nisn && <p style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>{fErr.nisn}</p>}
                   </div>
-                </>)}
-
-                {regF.role === "guru" && (<>
-                  <Grp>
-                    <Label req>NIP</Label>
-                    <Wrap><Icon><FaIdCard /></Icon><input name="nip" type="text" placeholder="Nomor Induk Pegawai" value={regF.nip} onChange={onRC} onFocus={() => setFocus('nip')} onBlur={() => setFocus(null)} style={iS('nip')} /></Wrap>
-                    <Err msg={fErr.nip} />
-                  </Grp>
-                  <Grp>
-                    <Label req>Mata Pelajaran</Label>
-                    {mapelLoad ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem' }}><div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #e5e7eb', borderTopColor: '#22c55e', animation: 'spin 0.6s linear infinite', marginRight: 8 }} />Memuat mata pelajaran...</div>
-                    ) : mapelList.length === 0 ? (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', border: '1px dashed #d1d5db', borderRadius: '0.5rem' }}>Tidak ada mata pelajaran tersedia</div>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem', maxHeight: '10rem', overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: '0.5rem', padding: '0.75rem' }} className="auth-scroll">
-                        {mapelList.map(m => (
-                          <div key={m} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input type="checkbox" id={`rm-${m}`} name="mapel" value={m} checked={Array.isArray(regF.mapel) && regF.mapel.includes(m)} onChange={onRC} className="mapel-checkbox" />
-                            <label htmlFor={`rm-${m}`} style={{ fontSize: '0.875rem', color: '#374151', cursor: 'pointer', userSelect: 'none' }}>{m}</label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <Err msg={fErr.mapel} />
-                  </Grp>
-                </>)}
 
                 {regErr && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '0.75rem 1rem', borderRadius: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }} className="animate-fade-in"><FaExclamationCircle style={{ color: '#ef4444', flexShrink: 0 }} /><span>{regErr}</span></div>}
 

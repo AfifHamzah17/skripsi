@@ -108,7 +108,7 @@ export default function PetugasPresenter() {
   }, [alats, searchAlat, filterCategory, filterStatus]);
 
   const filteredPeminjamans = useMemo(() => {
-    let res = peminjamans.filter(p => ['pending', 'disetujui'].includes(p.status));
+    let res = peminjamans.filter(p => ['pending', 'disetujui', 'diajukan_kembali'].includes(p.status));
     if (searchPeminjaman) res = res.filter(p => p.user?.nama?.toLowerCase().includes(searchPeminjaman.toLowerCase()) || p.alat?.nama?.toLowerCase().includes(searchPeminjaman.toLowerCase()));
     if (filterStatusPeminjaman !== 'all') res = res.filter(p => p.status === filterStatusPeminjaman);
     return res;
@@ -298,6 +298,7 @@ export default function PetugasPresenter() {
     const userInfo = guruList.find(u => u.id === p.userId);
     const teacherDoc = teachers.find(t => t.id === p.guruId);
     const teacherUser = teacherDoc ? guruList.find(u => u.id === teacherDoc.userId) : null;
+    const alatData = alats.find(al => al.id === p.alatId);
     setDetailModal({
       isOpen: true,
       data: {
@@ -309,9 +310,10 @@ export default function PetugasPresenter() {
           nohp: p.guru?.nohp || teacherUser?.nohp || '-',
           mapelUsed: Array.isArray(p.mapel) ? p.mapel : (p.mapel ? [p.mapel] : []),
         },
+        alat: alatData ? { ...p.alat, gambar: alatData.gambar || null } : null,
       },
     });
-  }, [guruList, teachers]);
+  }, [guruList, teachers, alats]);
 
   return (
     <PetugasView

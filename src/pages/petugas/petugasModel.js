@@ -1,3 +1,4 @@
+// src/pages/petugas/petugasModel.js
 import { getAllPeminjaman, updatePeminjamanStatus, getAllAlat, deletePeminjaman } from '../models/peminjaman-model';
 import { getAllUsers } from '../auth/authModel';
 import ExcelJS from 'exceljs';

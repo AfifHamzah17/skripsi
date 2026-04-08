@@ -1,8 +1,11 @@
+// src/pages/siswa/siswaPresenter.jsx
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import SiswaView from './siswaView';
 import { getAllMapel } from '../models/mapel-model';
-import { fetchAlats, fetchMyPeminjaman, submitPeminjaman, cancelPeminjaman, fetchGuruByMapel, processPeminjamanData, calculateStats, filterAlats, filterPeminjamans } from './siswaModel';
+import { fetchAlats, fetchMyPeminjaman, submitPeminjaman, cancelPeminjaman, fetchGuruByMapel, processPeminjamanData, calculateStats, filterAlats, filterPeminjamans, requestReturn } from './siswaModel';
+import Cropper from 'react-easy-crop';
+import { FaImage, FaUndo, FaTimes } from 'react-icons/fa';
 
 export default function SiswaPresenter({ user, activeTab }) {
   const [alats, setAlats] = useState([]);
@@ -26,6 +29,13 @@ export default function SiswaPresenter({ user, activeTab }) {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [rSort, setRSort] = useState({ key: null, dir: 'asc' });
+  const [retReq, setRetReq] = useState({ open: false, id: null });
+  const [photos, setPhotos] = useState([]);
+  const [cropSt, setCropSt] = useState({ open: false, idx: -1, src: null });
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [cropPx, setCropPx] = useState(null);
+  const [submittingRet, setSubmittingRet] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -85,7 +95,42 @@ export default function SiswaPresenter({ user, activeTab }) {
     });
   }, [pinjam, search, statusF, rSort]);
 
+  const createImage = (url) => new Promise((resolve, reject) => {
+    const image = new Image(); image.crossOrigin = "anonymous";
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", reject); image.src = url;
+  });
+  const getCroppedImg = async (imageSrc, pixelCrop) => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d");
+    const MAX = 1024; let w = pixelCrop.width, h = pixelCrop.height;
+    if (w > MAX || h > MAX) { if (w > h) { h = (h / w) * MAX; w = MAX; } else { w = (w / h) * MAX; h = MAX; } }
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, w, h);
+    return new Promise((resolve) => { canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.7); });
+  };
+
+  const openRetReq = (p) => { setRetReq({ open: true, id: p.id }); setPhotos([]); };
+  const closeRetReq = () => { setRetReq({ open: false, id: null }); setPhotos([]); };
+  const handleFileSel = (e) => { const f = e.target.files[0]; if (!f || !f.type.startsWith("image/")) return; const r = new FileReader(); r.onloadend = () => setCropSt({ open: true, idx: photos.length, src: r.result }); r.readAsDataURL(f); e.target.value = ""; };
+  const onCropDone = useCallback((c, p) => setCropPx(p), []);
+  const confirmCrop = async () => {
+    try {
+      const blob = await getCroppedImg(cropSt.src, cropPx);
+      if (blob.size > 1 * 1024 * 1024) return toast.error("Foto terlalu besar, potong lebih kecil.");
+      const r = new FileReader(); r.onloadend = () => { setPhotos(prev => [...prev, { src: r.result }]); setCropSt({ open: false, idx: -1, src: null }); setZoom(1); }; r.readAsDataURL(blob);
+    } catch { toast.error("Gagal memproses gambar"); }
+  };
+  const cancelCrop = () => { setCropSt({ open: false, idx: -1, src: null }); setZoom(1); };
+  const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
+  const submitRetReq = async () => {
+    if (!photos.length) return toast.error("Upload minimal 1 foto bukti");
+    setSubmittingRet(true);
+    try { const r = await requestReturn(retReq.id, photos.map(p => p.src)); if (r.error) toast.error(r.message); else { toast.success("Berhasil diajukan"); closeRetReq(); await load(); } }
+    catch (e) { toast.error(e.message || 'Gagal'); } finally { setSubmittingRet(false); }
+  };
   return (
-    <SiswaView user={user} loading={loading} message={msg} activeTab={activeTab} searchTerm={search} setSearchTerm={setSearch} statusFilter={statusF} setStatusFilter={setStatusF} stats={calculateStats(alats, pinjam)} filteredAlats={filterAlats(alats, search, catF)} filteredPeminjamans={sorted} isModalOpen={modal} selectedAlat={selAlat} jumlah={jumlah} selectedMapel={selMapel} daftarMapel={mapelList} gurus={gurus} selectedGuru={selGuru} submitting={submitting} onPinjamClick={openPinjam} onMapelChange={onMapelChange} onGuruChange={onGuruChange} onJumlahChange={onJumlahChange} onSubmit={handleSubmit} onCloseModal={() => setModal(false)} detailModalOpen={detailModal} selectedDetailAlat={detailAlat} onViewDetail={openDetail} onCloseDetailModal={closeDetail} filterCategory={catF} setFilterCategory={setCatF} cancelModalOpen={cancelModal} cancelTarget={cancelTarget} cancelling={cancelling} onCancelClick={openCancel} onConfirmCancel={confirmCancel} onCloseCancelModal={() => { setCancelModal(false); setCancelTarget(null); }} riwayatSort={rSort} handleRiwayatSort={handleRiwayatSort} />
+    <SiswaView user={user} loading={loading} message={msg} activeTab={activeTab} searchTerm={search} setSearchTerm={setSearch} statusFilter={statusF} setStatusFilter={setStatusF} stats={calculateStats(alats, pinjam)} filteredAlats={filterAlats(alats, search, catF)} filteredPeminjamans={sorted} isModalOpen={modal} selectedAlat={selAlat} jumlah={jumlah} selectedMapel={selMapel} daftarMapel={mapelList} gurus={gurus} selectedGuru={selGuru} submitting={submitting} onPinjamClick={openPinjam} onMapelChange={onMapelChange} onGuruChange={onGuruChange} onJumlahChange={onJumlahChange} onSubmit={handleSubmit} onCloseModal={() => setModal(false)} detailModalOpen={detailModal} selectedDetailAlat={detailAlat} onViewDetail={openDetail} onCloseDetailModal={closeDetail} filterCategory={catF} setFilterCategory={setCatF} cancelModalOpen={cancelModal} cancelTarget={cancelTarget} cancelling={cancelling} onCancelClick={openCancel} onConfirmCancel={confirmCancel} onCloseCancelModal={() => { setCancelModal(false); setCancelTarget(null); }} riwayatSort={rSort} handleRiwayatSort={handleRiwayatSort}
+    retReqModal={retReq} photos={photos} cropSt={cropSt} crop={crop} zoom={zoom} setZoom={setZoom} setCrop={setCrop} onCropDone={onCropDone} openRetReq={openRetReq} closeRetReq={closeRetReq} handleFileSel={handleFileSel} confirmCrop={confirmCrop} cancelCrop={cancelCrop} removePhoto={removePhoto} submitRetReq={submitRetReq} submittingRet={submittingRet} />
   );
 }

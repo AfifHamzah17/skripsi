@@ -24,13 +24,13 @@ export const getAllMapel = async () => {
   } catch (error) { return { error: true, message: error.message }; }
 };
 
-export const addMapel = async (nama, kelas, dibuatOleh, dibuatOlehId) => {
+export const addMapel = async (nama, kelas, jp, dibuatOleh, dibuatOlehId) => {
   try {
     const base = await API();
     const response = await fetch(base + '/mapel', {
       method: 'POST',
       headers: jsonHeader(),
-      body: JSON.stringify({ nama, kelas, dibuatOleh, dibuatOlehId }),
+      body: JSON.stringify({ nama, kelas, jp, dibuatOleh, dibuatOlehId }),
     });
     const data = await safeJson(response);
     if (!response.ok) throw new Error(data.message || 'Gagal menambah mapel');
@@ -38,13 +38,13 @@ export const addMapel = async (nama, kelas, dibuatOleh, dibuatOlehId) => {
   } catch (error) { return { error: true, message: error.message }; }
 };
 
-export const editMapel = async (id, nama, kelas) => {
+export const editMapel = async (id, nama, kelas, jp) => {
   try {
     const base = await API();
     const response = await fetch(base + '/mapel/' + id, {
       method: 'PUT',
       headers: jsonHeader(),
-      body: JSON.stringify({ nama, kelas }),
+      body: JSON.stringify({ nama, kelas, jp }),
     });
     const data = await safeJson(response);
     if (!response.ok) throw new Error(data.message || 'Gagal mengupdate mapel');

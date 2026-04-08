@@ -1,12 +1,15 @@
+// src/pages/siswa/siswaView.jsx
 import React, { useState } from 'react';
-import { FaTools, FaCheckCircle, FaClock, FaImage, FaEye, FaTag, FaCube, FaSearch, FaFilter, FaClipboardList, FaTimesCircle, FaBan, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTools, FaCheckCircle, FaClock, FaImage, FaEye, FaTag, FaCube, FaSearch, FaFilter, FaClipboardList, FaTimesCircle, FaBan, FaExclamationTriangle, FaUndo, FaTimes } from 'react-icons/fa';
 import Modal from '../../components/modal';
+import Cropper from 'react-easy-crop';
 
 const SBadge = ({ status }) => {
-  const c = { pending: '#fef3c7', disetujui: '#d1fae5', ditolak: '#fee2e2', kembali: '#dbeafe', dikembalikan: '#dbeafe', dibatalkan: '#f3f4f6' };
-  const t = { pending: '#92400e', disetujui: '#065f46', ditolak: '#991b1b', kembali: '#1e40af', dikembalikan: '#1e40af', dibatalkan: '#4b5563' };
-  const i = { pending: <FaClock />, disetujui: <FaCheckCircle />, ditolak: <FaTimesCircle />, kembali: <FaCheckCircle />, dikembalikan: <FaCheckCircle />, dibatalkan: <FaBan /> };
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: c[status] || c.pending, color: t[status] || t.pending }}>{i[status] || i.pending}{status}</span>;
+  const c = { pending: '#fef3c7', disetujui: '#d1fae5', ditolak: '#fee2e2', kembali: '#dbeafe', dikembalikan: '#dbeafe', dibatalkan: '#f3f4f6', diajukan_kembali: '#f3e8ff' };
+  const t = { pending: '#92400e', disetujui: '#065f46', ditolak: '#991b1b', kembali: '#1e40af', dikembalikan: '#1e40af', dibatalkan: '#4b5563', diajukan_kembali: '#6b21a8' };
+  const i = { pending: <FaClock />, disetujui: <FaCheckCircle />, ditolak: <FaTimesCircle />, kembali: <FaCheckCircle />, dikembalikan: <FaCheckCircle />, dibatalkan: <FaBan />, diajukan_kembali: <FaUndo /> };
+  const label = status === 'diajukan_kembali' ? 'Menunggu Verifikasi' : status;
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: c[status] || c.pending, color: t[status] || t.pending }}>{i[status] || i.pending}{label}</span>;
 };
 
 const TH = ({ label, sk, sort, onSort, w }) => {
@@ -16,7 +19,7 @@ const TH = ({ label, sk, sort, onSort, w }) => {
 
 const Spin = ({ big }) => <div style={{ width: big ? 48 : 16, height: big ? 48 : 16, borderRadius: '50%', border: big ? '3px solid #e5e7eb' : '2px solid rgba(255,255,255,0.3)', borderTopColor: big ? '#3b82f6' : '#fff', animation: 'spin 0.6s linear infinite' }} />;
 
-export default function SiswaView({ user, loading, message, activeTab, searchTerm, setSearchTerm, statusFilter, setStatusFilter, stats, filteredAlats, filteredPeminjamans, isModalOpen, selectedAlat, jumlah, selectedMapel, daftarMapel, gurus, selectedGuru, submitting, onPinjamClick, onMapelChange, onGuruChange, onJumlahChange, onSubmit, onCloseModal, detailModalOpen, selectedDetailAlat, onViewDetail, onCloseDetailModal, filterCategory, setFilterCategory, cancelModalOpen, cancelTarget, cancelling, onCancelClick, onConfirmCancel, onCloseCancelModal, riwayatSort, handleRiwayatSort }) {
+export default function SiswaView({ user, loading, message, activeTab, searchTerm, setSearchTerm, statusFilter, setStatusFilter, stats, filteredAlats, filteredPeminjamans, isModalOpen, selectedAlat, jumlah, selectedMapel, daftarMapel, gurus, selectedGuru, submitting, onPinjamClick, onMapelChange, onGuruChange, onJumlahChange, onSubmit, onCloseModal, detailModalOpen, selectedDetailAlat, onViewDetail, onCloseDetailModal, filterCategory, setFilterCategory, cancelModalOpen, cancelTarget, cancelling, onCancelClick, onConfirmCancel, onCloseCancelModal, riwayatSort, handleRiwayatSort, retReqModal, photos, cropSt, crop, zoom, setZoom, setCrop, onCropDone, openRetReq, closeRetReq, handleFileSel, confirmCrop, cancelCrop, removePhoto, submitRetReq, submittingRet }) {
   const [zoomed, setZoomed] = useState(false);
   const fmt = d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -78,21 +81,27 @@ export default function SiswaView({ user, loading, message, activeTab, searchTer
       {activeTab === 'riwayat' && (<>
         <div style={{ display: 'flex', gap: 8, background: '#fff', padding: 12, borderRadius: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
           <div style={{ position: 'relative', flex: 1 }}><FaSearch style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 13 }} /><input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Cari riwayat..." style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} /></div>
-          <div style={{ position: 'relative' }}><FaFilter style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 12 }} /><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 140, padding: '9px 12px 9px 32px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#fff', outline: 'none', appearance: 'none' }}><option value="all">Semua</option><option value="pending">Pending</option><option value="disetujui">Disetujui</option><option value="kembali">Kembali</option><option value="ditolak">Ditolak</option></select></div>
+          <div style={{ position: 'relative' }}><FaFilter style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 12 }} /><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 140, padding: '9px 12px 9px 32px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#fff', outline: 'none', appearance: 'none' }}><option value="all">Semua</option><option value="pending">Pending</option><option value="disetujui">Disetujui</option><option value="diajukan_kembali">Diajukan Kembali</option><option value="kembali">Kembali</option><option value="ditolak">Ditolak</option></select></div>
         </div>
 
         <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', overflow: 'hidden' }}>
           {filteredPeminjamans.length > 0 ? (<>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #f3f4f6' }}><h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>Riwayat Peminjaman</h3></div>
             <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>{TH({ label: 'Alat', sk: 'alat', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Jumlah', sk: 'jumlah', sort: riwayatSort, onSort: handleRiwayatSort, w: 70 })}{TH({ label: 'Mapel', sk: 'mapel', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Tanggal', sk: 'tanggal', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Status', sk: 'status', sort: riwayatSort, onSort: handleRiwayatSort, w: 130 })}</tr></thead>
+              <thead><tr>{TH({ label: 'Alat', sk: 'alat', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Jumlah', sk: 'jumlah', sort: riwayatSort, onSort: handleRiwayatSort, w: 70 })}{TH({ label: 'Mapel', sk: 'mapel', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Tanggal', sk: 'tanggal', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Status', sk: 'status', sort: riwayatSort, onSort: handleRiwayatSort, w: 160 })}</tr></thead>
               <tbody>{filteredPeminjamans.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #f9fafb' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{p.alat?.nama || '-'}</td>
                   <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'center' }}>{p.jumlah}</td>
                   <td style={{ padding: '10px 12px', fontSize: 13 }}>{p.mapel ? <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, background: '#faf5ff', color: '#7c3aed', borderRadius: 9999, border: '1px solid #e9d5ff' }}>{p.mapel}</span> : '-'}</td>
                   <td style={{ padding: '10px 12px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{fmt(p.tanggalPeminjaman)}</td>
-                  <td style={{ padding: '10px 12px' }}><div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{SBadge({ status: p.status })}{p.status === 'pending' && <button type="button" onClick={() => onCancelClick(p)} style={{ padding: 4, background: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }} title="Batalkan"><FaBan style={{ fontSize: 11 }} /></button>}</div></td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {SBadge({ status: p.status })}
+                      {p.status === 'pending' && <button type="button" onClick={() => onCancelClick(p)} style={{ padding: 4, background: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }} title="Batalkan"><FaBan style={{ fontSize: 11 }} /></button>}
+                      {p.status === 'disetujui' && <button type="button" onClick={() => openRetReq(p)} style={{ padding: 4, background: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#2563eb' }} title="Ajukan Pengembalian"><FaUndo style={{ fontSize: 11 }} /></button>}
+                    </div>
+                  </td>
                 </tr>
               ))}</tbody>
             </table></div>
@@ -158,6 +167,46 @@ export default function SiswaView({ user, loading, message, activeTab, searchTer
             <button type="button" onClick={onConfirmCancel} disabled={cancelling} style={{ flex: 1, padding: 10, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', background: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: cancelling ? 0.5 : 1 }}>{cancelling ? <><Spin />Membatalkan...</> : <><FaBan style={{ fontSize: 11 }} />Ya, Batalkan</>}</button>
           </div>
         </div>)}
+      </Modal>
+
+      {/* MODAL: AJUKAN PENGEMBALIAN */}
+      <Modal isOpen={retReqModal.open} onClose={closeRetReq} title="Ajukan Pengembalian">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Upload bukti pembelajaran (maks 3 foto). Foto akan dicrop & dikompres otomatis.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {photos.map((p, i) => (
+              <div key={i} style={{ position: 'relative', height: 100, background: '#f3f4f6', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                <img src={p.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" onClick={() => removePhoto(i)} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: 'rgba(239,68,68,0.8)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaTimes style={{ fontSize: 9 }} /></button>
+              </div>
+            ))}
+            {photos.length < 3 && (
+              <label style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #d1d5db', borderRadius: 8, cursor: 'pointer', color: '#9ca3af', fontSize: 12, gap: 4 }}>
+                <FaImage style={{ fontSize: 20 }} /><span>Tambah Foto</span>
+                <input type="file" accept="image/*" onChange={handleFileSel} hidden />
+              </label>
+            )}
+          </div>
+          {cropSt.open && (
+            <div style={{ position: 'relative', width: '100%', height: 250, background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+              <Cropper image={cropSt.src} crop={crop} zoom={zoom} aspect={4 / 3} onCropChange={setCrop} onCropComplete={onCropDone} onZoomChange={setZoom} />
+            </div>
+          )}
+          {cropSt.open && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#6b7280' }}>Zoom</span>
+              <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1 }} />
+              <button type="button" onClick={cancelCrop} style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 12 }}>Batal</button>
+              <button type="button" onClick={confirmCrop} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Gunakan</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={closeRetReq} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer' }}>Batal</button>
+            <button type="button" onClick={submitRetReq} disabled={submittingRet || photos.length === 0} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#2563eb', border: 'none', borderRadius: 8, cursor: submittingRet ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: (submittingRet || !photos.length) ? 0.5 : 1 }}>
+              {submittingRet ? <><Spin />Mengirim...</> : 'Ajukan Pengembalian'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>

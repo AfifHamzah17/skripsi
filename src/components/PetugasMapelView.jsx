@@ -1,3 +1,4 @@
+// src/components/PetugasMapelView.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from './modal';
 import { toast } from 'react-toastify';
@@ -34,7 +35,7 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [formModal, setFormModal] = useState({ open: false, mode: 'add', data: null });
   const [delModal, setDelModal] = useState({ open: false, data: null });
-  const [fd, setFd] = useState({ nama: '', tingkat: '', jurusan: '', nomor: '', kelas: '' });
+  const [fd, setFd] = useState({ nama: '', tingkat: '', jurusan: '', nomor: '', kelas: '', jp: '' });
   const [fErr, setFErr] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -94,12 +95,12 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
 
   const handleSort = k => { setSort(p => ({ key: k, dir: p.key === k && p.dir === 'asc' ? 'desc' : 'asc' })); setPage(1); };
   const resetFilters = () => { setSearch(''); setFilterKelas(''); setFilterCreator(''); };
-  const openAdd = () => { setFd({ nama: '', tingkat: '', jurusan: '', nomor: '', kelas: '' }); setFErr({}); setFormModal({ open: true, mode: 'add', data: null }); };
+  const openAdd = () => { setFd({ nama: '', tingkat: '', jurusan: '', nomor: '', kelas: '', jp: '' }); setFErr({}); setFormModal({ open: true, mode: 'add', data: null }); };
 
   const openEdit = item => {
     let tingkat = '', jurusan = '', nomor = '';
     if (item.kelas) { const p = item.kelas.trim().split(/\s+/); if (p.length >= 1) tingkat = p[0]; if (p.length >= 2) jurusan = p[1]; if (p.length >= 3) nomor = p[2]; }
-    setFd({ nama: item.nama || '', tingkat, jurusan, nomor, kelas: item.kelas || '' });
+    setFd({ nama: item.nama || '', tingkat, jurusan, nomor, kelas: item.kelas || '', jp: item.jp ?? '' });
     setFErr({});
     setFormModal({ open: true, mode: 'edit', data: item });
   };
@@ -119,9 +120,10 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
     if (Object.keys(errors).length) { setFErr(errors); toast.error(Object.values(errors)[0]); return; }
     setSubmitting(true);
     try {
+      const jpVal = fd.jp === '' ? null : parseInt(fd.jp, 10);
       const res = formModal.mode === 'add'
-        ? await addMapel(fd.nama.trim(), fd.kelas.trim(), user?.nama || 'Petugas', user?.id)
-        : await editMapel(formModal.data.id, fd.nama.trim(), fd.kelas.trim());
+        ? await addMapel(fd.nama.trim(), fd.kelas.trim(), jpVal, user?.nama || 'Petugas', user?.id)
+        : await editMapel(formModal.data.id, fd.nama.trim(), fd.kelas.trim(), jpVal);
       if (res.error) toast.error(res.message);
       else { toast.success(formModal.mode === 'add' ? `"${fd.nama.trim()}" ditambahkan` : 'Mapel diperbarui'); setFormModal({ open: false, mode: 'add', data: null }); load(); }
     } catch { toast.error('Gagal memproses'); }
@@ -168,6 +170,7 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
               <th style={{ ...TH, width: 44, textAlign: 'center' }}>No</th>
               {Th('Nama Mapel', 'nama')}
               {Th('Kelas', 'kelas')}
+              {Th('JP', 'jp', '60px')}
               {Th('Dibuat Oleh', 'dibuatOleh')}
               {Th('Dibuat', 'createdAt')}
               <th style={{ ...TH, width: 80, textAlign: 'center' }}>Aksi</th>
@@ -180,6 +183,7 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
                     <td style={{ ...TD, textAlign: 'center', color: '#9ca3af' }}>{(page - 1) * limit + i + 1}</td>
                     <td style={{ ...TD, fontWeight: 500, color: '#111827' }}>{m.nama}</td>
                     <td style={TD}>{m.kelas ? <span style={{ display: 'inline-block', padding: '2px 8px', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: 12, fontWeight: 500, borderRadius: 9999, border: '1px solid #c7d2fe' }}>{m.kelas}</span> : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                    <td style={{ ...TD, textAlign: 'center', fontWeight: 500 }}>{m.jp ? <span style={{ padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 600, borderRadius: 9999, border: '1px solid #fde68a' }}>{m.jp} JP</span> : <span style={{ color: '#d1d5db' }}>—</span>}</td>
                     <td style={TD}>
                       {m.dibuatOleh ? (
                         creatorId ? (
@@ -199,7 +203,7 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
                   </tr>
                 );
               }) : (
-                <tr><td colSpan={6} style={{ padding: '36px 20px', textAlign: 'center' }}>
+                <tr><td colSpan={7} style={{ padding: '36px 20px', textAlign: 'center' }}>
                   <FaTrash style={{ fontSize: 32, color: '#d1d5db', display: 'block', margin: '0 auto 8px' }} />
                   <p style={{ fontWeight: 500, color: '#6b7280', margin: '0 0 4px', fontSize: 13 }}>{search || filterKelas || filterCreator ? 'Tidak ada data cocok' : 'Belum ada data'}</p>
                 </td></tr>
@@ -246,6 +250,11 @@ export default function PetugasMapelView({ user, addTrigger, userList = [] }) {
             {fd.kelas && <div style={{ marginTop: 4, fontSize: 12, color: '#4b5563' }}><span>Kelas: </span><span style={{ fontWeight: 600, color: '#4338ca' }}>{fd.kelas}</span></div>}
             <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>Opsional. Cukup tingkat ("X"), tingkat + jurusan ("X RPL"), atau lengkap ("X RPL 1").</p>
           </div>
+          <div style={{ marginBottom: 12 }}>
+  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Jam Pelajaran (JP)</label>
+  <input type="number" name="jp" value={fd.jp} onChange={e => { const v = e.target.value; setFd(p => ({ ...p, jp: v === '' ? '' : Math.min(10, Math.max(1, parseInt(v) || 0)) })); if (fErr.jp) setFErr(p => { const n = { ...p }; delete n.jp; return n; }); }} placeholder="Contoh: 3" min="1" max="10" style={{ width: '100%', padding: '7px 10px', border: `1px solid ${fErr.jp ? '#ef4444' : '#d1d5db'}`, borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+  <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>1 JP = 45 menit. Digunakan untuk hitung batas waktu pengembalian otomatis.</p>
+</div>
           {formModal.mode === 'add' && (
             <div style={{ fontSize: 11, color: '#6b7280', background: '#f5f3ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #e9e5ff', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#c4b5fd', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 8, fontWeight: 700, flexShrink: 0 }}>{(user?.nama || 'P')[0].toUpperCase()}</span>

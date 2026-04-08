@@ -1,3 +1,4 @@
+// src/pages/siswa/siswaModel.js
 import { getAlat } from '../models/alat-model';
 import { createPeminjaman, getMyPeminjaman } from '../models/peminjaman-model';
 
@@ -22,3 +23,12 @@ export const calculateStats = (alats, pinjam) => ({ totalAlat: alats.length, ava
 
 export const filterAlats = (alats, q, cat) => alats.filter(a => a?.nama?.toLowerCase().includes(q.toLowerCase()) && (cat === 'all' || a?.kategori === cat));
 export const filterPeminjamans = (pinjam, q, status) => pinjam.filter(p => (p.alat?.nama?.toLowerCase().includes(q.toLowerCase()) || p.mapel?.toLowerCase().includes(q.toLowerCase())) && (status === 'all' || p.status === status));
+
+export const requestReturn = async (id, buktiPembelajaran) => {
+  const r = await fetch(import.meta.env.VITE_API_BASE + '/peminjaman/' + id + '/request-return', {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ buktiPembelajaran }),
+  });
+  const d = await r.json(); if (!r.ok) throw new Error(d.message || 'Gagal'); return d;
+};

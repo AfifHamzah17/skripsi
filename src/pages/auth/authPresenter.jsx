@@ -80,14 +80,6 @@ export const validateRegisterForm = (formData) => {
     }
   }
 
-  if ((formData.role === 'guru' || formData.role === 'admin') && !formData.nip?.trim()) {
-    errors.nip = 'NIP harus diisi untuk guru/admin';
-  }
-
-  if (formData.role === 'guru' && (!formData.mapel || formData.mapel.length === 0)) {
-    errors.mapel = 'Pilih minimal satu mata pelajaran';
-  }
-
   if (formData.role === 'petugas' && !formData.posisi?.trim()) {
     errors.posisi = 'Posisi harus diisi untuk petugas';
   }
@@ -114,10 +106,6 @@ export const prepareRegisterData = (formData) => {
   if (submitData.role !== 'siswa') {
     delete submitData.kelas;
     delete submitData.nisn;
-  }
-  if (submitData.role !== 'guru' && submitData.role !== 'admin') {
-    delete submitData.nip;
-    delete submitData.mapel;
   }
   if (submitData.role !== 'petugas') {
     delete submitData.posisi;
