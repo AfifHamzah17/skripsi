@@ -1,109 +1,224 @@
-// src/pages/siswa/siswaPresenter.jsx
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { toast } from 'react-toastify';
-import SiswaView from './siswaView';
-import { getAllMapel } from '../models/mapel-model';
-import { getAllRoster, getGuruByMapelKelas } from '../models/roster-model';
-import { fetchAlats, fetchMyPeminjaman, submitPeminjaman, cancelPeminjaman, processPeminjamanData, calculateStats, filterAlats, filterPeminjamans, requestReturn } from './siswaModel';
+// src/pages/siswa/siswaView.jsx
+import React, { useState } from 'react';
+import { FaTools, FaCheckCircle, FaClock, FaImage, FaEye, FaTag, FaCube, FaSearch, FaFilter, FaClipboardList, FaTimesCircle, FaBan, FaExclamationTriangle, FaUndo, FaTimes, FaInfoCircle } from 'react-icons/fa';
+import Modal from '../../components/modal';
 import Cropper from 'react-easy-crop';
-import { FaImage, FaUndo, FaTimes } from 'react-icons/fa';
-export default function SiswaPresenter({ user, activeTab }) {
-  const [alats, setAlats] = useState([]);
-  const [pinjam, setPinjam] = useState([]);
-  const [mapelList, setMapelList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selAlat, setSelAlat] = useState(null);
-  const [jumlah, setJumlah] = useState(1);
-  const [msg, setMsg] = useState('');
-  const [search, setSearch] = useState('');
-  const [statusF, setStatusF] = useState('all');
-  const [catF, setCatF] = useState('all');
-  const [modal, setModal] = useState(false);
-  const [selMapel, setSelMapel] = useState('');
-  const [gurus, setGurus] = useState([]);
-  const [selGuru, setSelGuru] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [detailModal, setDetailModal] = useState(false);
-  const [detailAlat, setDetailAlat] = useState(null);
-  const [cancelModal, setCancelModal] = useState(false);
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [cancelling, setCancelling] = useState(false);
-  const [rSort, setRSort] = useState({ key: null, dir: 'asc' });
-  const [retReq, setRetReq] = useState({ open: false, id: null });
-  const [photos, setPhotos] = useState([]);
-  const [cropSt, setCropSt] = useState({ open: false, idx: -1, src: null });
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [cropPx, setCropPx] = useState(null);
-  const [submittingRet, setSubmittingRet] = useState(false);
-  const [rosterNow, setRosterNow] = useState(null);
-  const [rosterStatus, setRosterStatus] = useState('kosong');
-  const load = useCallback(async () => {
-    try { setLoading(true); setMsg(''); const [a, p, m] = await Promise.all([fetchAlats(), fetchMyPeminjaman(), getAllMapel()]); if (!a.error) setAlats(a.result || []); else setMsg(a.message); if (!p.error) setPinjam(processPeminjamanData(p.result, a.result)); else setPinjam(p.result || []); if (!m.error) setMapelList(m.result || []); else setMapelList([]); } catch { setMsg('Gagal memuat data'); } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    if (modal) {
-      setSelMapel(''); setGurus([]); setSelGuru(''); setJumlah(1); setMsg(''); setRosterNow(null); setRosterStatus('kosong');
-      if (user?.kelas) {
-        getAllRoster().then(r => {
-          if (!r.error && r.result) {
-            const HARI_ARR = ['MINGGU','SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU'];
-            const now = new Date();
-            const hariIni = HARI_ARR[now.getDay()];
-            if (hariIni === 'MINGGU' || hariIni === 'SABTU') { setRosterStatus('kosong'); return; }
-            const jadwalKelas = r.result.filter(x => x.kelas === user.kelas && x.hari === hariIni);
-            if (!jadwalKelas.length) { setRosterStatus('kosong'); return; }
-            const JAM_MULAI = 7; const DURASI = 45;
-            const menit = (now.getHours() - JAM_MULAI) * 60 + now.getMinutes();
-            if (menit < 0) { setRosterStatus('kosong'); return; }
-            const jp = Math.floor(menit / DURASI) + 1;
-            const maxJp = Math.max(...jadwalKelas.map(j => j.jamKe || 0));
-            if (menit > maxJp * DURASI) { setRosterStatus('lewat'); return; }
-            const jadwalNow = jadwalKelas.find(j => j.jamKe === jp);
-            if (jadwalNow) { setRosterNow(jadwalNow); setRosterStatus('active'); setSelMapel(jadwalNow.mapelId); setGurus([{ id: jadwalNow.guruId, nama: jadwalNow.guruNama || 'Guru' }]); setSelGuru(jadwalNow.guruId); } else { setRosterStatus('kosong'); }
-          }
-        }).catch(() => setRosterStatus('kosong'));
-      }
-    }
-  }, [modal, user?.kelas]);
-  const loadGuru = useCallback(async (mapelId) => {
-    if (!mapelId || !user?.kelas) { setGurus([]); return; }
-    try { const r = await getGuruByMapelKelas(mapelId, user.kelas); if (!r.error && r.result) { const list = r.result.map(g => ({ id: g.guruId, nama: g.guruNama || 'Guru' })); setGurus(list); if (list.length === 1) setSelGuru(list[0].id); } else setGurus([]); } catch { setGurus([]); }
-  }, [user?.kelas]);
-  useEffect(() => { if (selMapel && rosterStatus !== 'active') loadGuru(selMapel); else if (!selMapel) { setGurus([]); setSelGuru(''); } }, [selMapel, loadGuru, rosterStatus]);
-  const openDetail = a => { setDetailAlat(a); setDetailModal(true); };
-  const closeDetail = () => { setDetailModal(false); setDetailAlat(null); };
-  const openPinjam = a => { setSelAlat(a); setModal(true); };
-  const onMapelChange = e => { setSelMapel(e.target.value); setSelGuru(''); };
-  const onGuruChange = e => setSelGuru(e.target.value);
-  const onJumlahChange = e => { const v = +e.target.value; if (v > 0 && v <= selAlat?.stok) setJumlah(v); };
-  const handleSubmit = async e => {
-    e.preventDefault(); if (!selAlat || !selMapel || !selGuru || jumlah <= 0) return setMsg('Lengkapi semua field');
-    const mapelNama = mapelList.find(m => m.id === selMapel)?.nama || selMapel;
-    setSubmitting(true); setMsg('');
-    try { const r = await submitPeminjaman({ alatId: selAlat.id, jumlah, mapel: mapelNama, guruId: selGuru }); if (r.error) { setMsg(r.message); toast.error(r.message); } else { toast.success(`"${selAlat.nama}" diajukan!`); setModal(false); setSelAlat(null); await load(); } } catch { setMsg('Gagal'); toast.error('Coba lagi'); } finally { setSubmitting(false); }
-  };
-  const openCancel = p => { setCancelTarget(p); setCancelModal(true); };
-  const confirmCancel = async () => { if (!cancelTarget) return; setCancelling(true); try { await cancelPeminjaman(cancelTarget.id); toast.success('Dibatalkan'); setCancelModal(false); setCancelTarget(null); await load(); } catch (e) { toast.error(e.message || 'Gagal'); } finally { setCancelling(false); } };
-  const handleRiwayatSort = k => setRSort(p => ({ key: k, dir: p.key === k && p.dir === 'asc' ? 'desc' : 'asc' }));
-  const sorted = useMemo(() => {
-    if (!rSort.key) return filterPeminjamans(pinjam, search, statusF);
-    return [...filterPeminjamans(pinjam, search, statusF)].sort((a, b) => {
-      let va, vb; if (rSort.key === 'jumlah') { va = a.jumlah; vb = b.jumlah; return rSort.dir === 'asc' ? va - vb : vb - va; } if (rSort.key === 'tanggal') { va = new Date(a.tanggalPeminjaman || 0).getTime(); vb = new Date(b.tanggalPeminjaman || 0).getTime(); } else { va = String(rSort.key === 'alat' ? a.alat?.nama : rSort.key === 'mapel' ? a.mapel : a.status || '').toLowerCase(); vb = String(rSort.key === 'alat' ? b.alat?.nama : rSort.key === 'mapel' ? b.mapel : b.status || '').toLowerCase(); } if (va < vb) return rSort.dir === 'asc' ? -1 : 1; if (va > vb) return rSort.dir === 'asc' ? 1 : -1; return 0;
-    });
-  }, [pinjam, search, statusF, rSort]);
-  const createImage = (url) => new Promise((resolve, reject) => { const image = new Image(); image.crossOrigin = "anonymous"; image.addEventListener("load", () => resolve(image)); image.addEventListener("error", reject); image.src = url; });
-  const getCroppedImg = async (imageSrc, pixelCrop) => { const image = await createImage(imageSrc); const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d"); const MAX = 1024; let w = pixelCrop.width, h = pixelCrop.height; if (w > MAX || h > MAX) { if (w > h) { h = (h / w) * MAX; w = MAX; } else { w = (w / h) * MAX; h = MAX; } } canvas.width = w; canvas.height = h; ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, w, h); return new Promise((resolve) => { canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.7); }); };
-  const openRetReq = (p) => { setRetReq({ open: true, id: p.id }); setPhotos([]); };
-  const closeRetReq = () => { setRetReq({ open: false, id: null }); setPhotos([]); };
-  const handleFileSel = (e) => { const f = e.target.files[0]; if (!f || !f.type.startsWith("image/")) return; const r = new FileReader(); r.onloadend = () => setCropSt({ open: true, idx: photos.length, src: r.result }); r.readAsDataURL(f); e.target.value = ""; };
-  const onCropDone = useCallback((c, p) => setCropPx(p), []);
-  const confirmCrop = async () => { try { const blob = await getCroppedImg(cropSt.src, cropPx); if (blob.size > 1 * 1024 * 1024) return toast.error("Foto terlalu besar, potong lebih kecil."); const r = new FileReader(); r.onloadend = () => { setPhotos(prev => [...prev, { src: r.result }]); setCropSt({ open: false, idx: -1, src: null }); setZoom(1); }; r.readAsDataURL(blob); } catch { toast.error("Gagal memproses gambar"); } };
-  const cancelCrop = () => { setCropSt({ open: false, idx: -1, src: null }); setZoom(1); };
-  const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
-  const submitRetReq = async () => { if (!photos.length) return toast.error("Upload minimal 1 foto bukti"); setSubmittingRet(true); try { const r = await requestReturn(retReq.id, photos.map(p => p.src)); if (r.error) toast.error(r.message); else { toast.success("Berhasil diajukan"); closeRetReq(); await load(); } } catch (e) { toast.error(e.message || 'Gagal'); } finally { setSubmittingRet(false); } };
+
+const SBadge = ({ status }) => {
+  const c = { pending: '#fef3c7', disetujui: '#d1fae5', ditolak: '#fee2e2', kembali: '#dbeafe', dikembalikan: '#dbeafe', dibatalkan: '#f3f4f6', diajukan_kembali: '#f3e8ff' };
+  const t = { pending: '#92400e', disetujui: '#065f46', ditolak: '#991b1b', kembali: '#1e40af', dikembalikan: '#1e40af', dibatalkan: '#4b5563', diajukan_kembali: '#6b21a8' };
+  const i = { pending: <FaClock />, disetujui: <FaCheckCircle />, ditolak: <FaTimesCircle />, kembali: <FaCheckCircle />, dikembalikan: <FaCheckCircle />, dibatalkan: <FaBan />, diajukan_kembali: <FaUndo /> };
+  const label = status === 'diajukan_kembali' ? 'Menunggu Verifikasi' : status;
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: c[status] || c.pending, color: t[status] || t.pending }}>{i[status] || i.pending}{label}</span>;
+};
+
+const TH = ({ label, sk, sort, onSort, w }) => {
+  const a = sort.key === sk;
+  return <th onClick={() => onSort(sk)} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', width: w, borderBottom: '1px solid #f3f4f6', background: '#f9fafb' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{label}<span style={{ fontSize: 9, color: a ? '#3b82f6' : '#d1d5db' }}>{a ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span></span></th>;
+};
+
+const Spin = ({ big }) => <div style={{ width: big ? 48 : 16, height: big ? 48 : 16, borderRadius: '50%', border: big ? '3px solid #e5e7eb' : '2px solid rgba(255,255,255,0.3)', borderTopColor: big ? '#3b82f6' : '#fff', animation: 'spin 0.6s linear infinite' }} />;
+
+export default function SiswaView({ user, loading, message, activeTab, searchTerm, setSearchTerm, statusFilter, setStatusFilter, stats, filteredAlats, filteredPeminjamans, isModalOpen, selectedAlat, jumlah, selectedMapel, daftarMapel, gurus, selectedGuru, submitting, onPinjamClick, onMapelChange, onGuruChange, onJumlahChange, onSubmit, onCloseModal, detailModalOpen, selectedDetailAlat, onViewDetail, onCloseDetailModal, filterCategory, setFilterCategory, cancelModalOpen, cancelTarget, cancelling, onCancelClick, onConfirmCancel, onCloseCancelModal, riwayatSort, handleRiwayatSort, retReqModal, photos, cropSt, crop, zoom, setZoom, setCrop, onCropDone, openRetReq, closeRetReq, handleFileSel, confirmCrop, cancelCrop, removePhoto, submitRetReq, submittingRet, rosterNow }) {
+  const [zoomed, setZoomed] = useState(false);
+  const fmt = d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Spin big /></div>;
+
+  const statCards = [
+    { t: 'Total Alat', v: stats.totalAlat, i: <FaTools />, bg: '#eff6ff', ic: '#2563eb' },
+    { t: 'Tersedia', v: stats.availableAlat, i: <FaCheckCircle />, bg: '#ecfdf5', ic: '#059669' },
+    { t: 'Pending', v: stats.pendingPeminjaman, i: <FaClock />, bg: '#fef9c3', ic: '#d97706' },
+    { t: 'Disetujui', v: stats.approvedPeminjaman, i: <FaCheckCircle />, bg: '#f3e8ff', ic: '#7c3aed' },
+  ];
+
   return (
-    <SiswaView user={user} loading={loading} message={msg} activeTab={activeTab} searchTerm={search} setSearchTerm={setSearch} statusFilter={statusF} setStatusFilter={setStatusF} stats={calculateStats(alats, pinjam)} filteredAlats={filterAlats(alats, search, catF)} filteredPeminjamans={sorted} isModalOpen={modal} selectedAlat={selAlat} jumlah={jumlah} selectedMapel={selMapel} daftarMapel={mapelList} gurus={gurus} selectedGuru={selGuru} submitting={submitting} onPinjamClick={openPinjam} onMapelChange={onMapelChange} onGuruChange={onGuruChange} onJumlahChange={onJumlahChange} onSubmit={handleSubmit} onCloseModal={() => setModal(false)} detailModalOpen={detailModal} selectedDetailAlat={detailAlat} onViewDetail={openDetail} onCloseDetailModal={closeDetail} filterCategory={catF} setFilterCategory={setCatF} cancelModalOpen={cancelModal} cancelTarget={cancelTarget} cancelling={cancelling} onCancelClick={openCancel} onConfirmCancel={confirmCancel} onCloseCancelModal={() => { setCancelModal(false); setCancelTarget(null); }} riwayatSort={rSort} handleRiwayatSort={handleRiwayatSort} rosterNow={rosterNow} rosterStatus={rosterStatus} retReqModal={retReq} photos={photos} cropSt={cropSt} crop={crop} zoom={zoom} setZoom={setZoom} setCrop={setCrop} onCropDone={onCropDone} openRetReq={openRetReq} closeRetReq={closeRetReq} handleFileSel={handleFileSel} confirmCrop={confirmCrop} cancelCrop={cancelCrop} removePhoto={removePhoto} submitRetReq={submitRetReq} submittingRet={submittingRet} />
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24, background: '#f9fafb', minHeight: '100%', width: '100%' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '16px 20px', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{activeTab === 'pinjam' ? 'Pinjam Alat' : 'Riwayat Peminjaman'}</h1>
+      </div>
+
+      {/* PINJAM TAB */}
+      {activeTab === 'pinjam' && (<>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+          {statCards.map(s => (
+            <div key={s.t} style={{ background: '#fff', borderRadius: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.ic, fontSize: 18 }}>{s.i}</div>
+              <div><div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{s.t}</div><div style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>{s.v}</div></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filter */}
+        <div style={{ display: 'flex', gap: 8, background: '#fff', padding: 12, borderRadius: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+          <div style={{ position: 'relative', flex: 1 }}><FaSearch style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 13 }} /><input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Cari nama atau merek..." style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} /></div>
+          <div style={{ position: 'relative' }}><FaFilter style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 12 }} /><select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} style={{ width: 140, padding: '9px 12px 9px 32px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#fff', outline: 'none', appearance: 'none' }}><option value="all">Semua</option><option value="Elektronik">Elektronik</option><option value="Komputer">Komputer</option><option value="Jaringan">Jaringan</option><option value="Peralatan">Peralatan</option><option value="Bahan">Bahan</option><option value="Lainnya">Lainnya</option></select></div>
+        </div>
+
+        {/* Alat Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
+          {filteredAlats.length > 0 ? filteredAlats.map(a => (
+            <div key={a.id} style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ height: 180, background: '#f3f4f6', cursor: 'pointer', position: 'relative' }} onClick={() => onViewDetail(a)}>
+                {a.gambar ? <img src={a.gambar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaImage style={{ fontSize: 40, color: '#d1d5db' }} /></div>}
+                {a.kategori && <span style={{ position: 'absolute', top: 8, left: 8, background: '#2563eb', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4 }}>{a.kategori}</span>}
+              </div>
+              <div style={{ padding: 14, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.nama}>{a.nama}</h3>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10, display: 'flex', gap: 12 }}>{a.merek && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FaTag style={{ fontSize: 10 }} />{a.merek}</span>}<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FaCube style={{ fontSize: 10 }} />Stok: {a.stok}</span></div>
+                <div style={{ marginTop: 'auto', borderTop: '1px solid #f3f4f6', paddingTop: 10, display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => onViewDetail(a)} style={{ flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 500, color: '#4b5563', background: '#f9fafb', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><FaEye style={{ fontSize: 11, color: '#9ca3af' }} />Detail</button>
+                  <button type="button" onClick={() => onPinjamClick(a)} disabled={a.stok <= 0} style={{ flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 600, color: a.stok > 0 ? '#fff' : '#9ca3af', background: a.stok > 0 ? '#2563eb' : '#f3f4f6', border: 'none', borderRadius: 6, cursor: a.stok > 0 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><FaTools style={{ fontSize: 11 }} />Pinjam</button>
+                </div>
+              </div>
+            </div>
+          )) : <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 48 }}><FaImage style={{ fontSize: 48, color: '#d1d5db', margin: '0 auto 12px' }} /><p style={{ fontSize: 14, color: '#6b7280' }}>Tidak ada data alat.</p></div>}
+        </div>
+      </>)}
+
+      {/* RIWAYAT TAB */}
+      {activeTab === 'riwayat' && (<>
+        <div style={{ display: 'flex', gap: 8, background: '#fff', padding: 12, borderRadius: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+          <div style={{ position: 'relative', flex: 1 }}><FaSearch style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 13 }} /><input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Cari riwayat..." style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} /></div>
+          <div style={{ position: 'relative' }}><FaFilter style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 12 }} /><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 140, padding: '9px 12px 9px 32px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#fff', outline: 'none', appearance: 'none' }}><option value="all">Semua</option><option value="pending">Pending</option><option value="disetujui">Disetujui</option><option value="diajukan_kembali">Diajukan Kembali</option><option value="kembali">Kembali</option><option value="ditolak">Ditolak</option></select></div>
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', overflow: 'hidden' }}>
+          {filteredPeminjamans.length > 0 ? (<>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #f3f4f6' }}><h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>Riwayat Peminjaman</h3></div>
+            <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>{TH({ label: 'Alat', sk: 'alat', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Jumlah', sk: 'jumlah', sort: riwayatSort, onSort: handleRiwayatSort, w: 70 })}{TH({ label: 'Mapel', sk: 'mapel', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Tanggal', sk: 'tanggal', sort: riwayatSort, onSort: handleRiwayatSort })}{TH({ label: 'Status', sk: 'status', sort: riwayatSort, onSort: handleRiwayatSort, w: 160 })}</tr></thead>
+              <tbody>{filteredPeminjamans.map(p => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f9fafb' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{p.alat?.nama || '-'}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'center' }}>{p.jumlah}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13 }}>{p.mapel ? <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, background: '#faf5ff', color: '#7c3aed', borderRadius: 9999, border: '1px solid #e9d5ff' }}>{p.mapel}</span> : '-'}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{fmt(p.tanggalPeminjaman)}</td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {SBadge({ status: p.status })}
+                      {p.status === 'pending' && <button type="button" onClick={() => onCancelClick(p)} style={{ padding: 4, background: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }} title="Batalkan"><FaBan style={{ fontSize: 11 }} /></button>}
+                      {p.status === 'disetujui' && <button type="button" onClick={() => openRetReq(p)} style={{ padding: 4, background: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#2563eb' }} title="Ajukan Pengembalian"><FaUndo style={{ fontSize: 11 }} /></button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          </>) : (
+            <div style={{ textAlign: 'center', padding: 48 }}><FaClipboardList style={{ fontSize: 48, color: '#d1d5db', margin: '0 auto 12px' }} /><h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>Riwayat Kosong</h3><p style={{ fontSize: 13, color: '#6b7280' }}>Mulai pinjam alat untuk kebutuhan praktikmu!</p></div>
+          )}
+        </div>
+      </>)}
+
+      {/* MODAL: DETAIL */}
+      <Modal isOpen={detailModalOpen} onClose={onCloseDetailModal} title="Detail Alat" size="lg">
+        {selectedDetailAlat && (<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ position: 'relative', background: '#f3f4f6', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', height: zoomed ? 'auto' : 300 }} onClick={() => setZoomed(!zoomed)}>
+            {selectedDetailAlat.gambar ? <img src={selectedDetailAlat.gambar} alt="" style={{ width: '100%', display: 'block', objectFit: zoomed ? 'contain' : 'cover', maxHeight: zoomed ? 500 : 300 }} /> : <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaImage style={{ fontSize: 48, color: '#d1d5db' }} /></div>}
+            <span style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, padding: '3px 8px', borderRadius: 4 }}>{zoomed ? 'Klik perkecil' : 'Klik perbesar'}</span>
+          </div>
+          <div><h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>{selectedDetailAlat.nama}</h2><div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{selectedDetailAlat.kategori && <span style={{ padding: '4px 12px', background: '#eff6ff', color: '#2563eb', borderRadius: 9999, fontSize: 13, fontWeight: 500 }}>{selectedDetailAlat.kategori}</span>}{selectedDetailAlat.merek && <span style={{ padding: '4px 12px', background: '#f3f4f6', color: '#374151', borderRadius: 9999, fontSize: 13 }}>Merek: {selectedDetailAlat.merek}</span>}<span style={{ padding: '4px 12px', background: selectedDetailAlat.stok > 0 ? '#ecfdf5' : '#fee2e2', color: selectedDetailAlat.stok > 0 ? '#059669' : '#dc2626', borderRadius: 9999, fontSize: 13, fontWeight: 500 }}>Stok: {selectedDetailAlat.stok}</span></div></div>
+          <div style={{ background: '#f9fafb', borderRadius: 8, padding: 16, border: '1px solid #f3f4f6' }}><h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 8px' }}>Deskripsi</h3><p style={{ fontSize: 13, color: '#6b7280', margin: 0, whiteSpace: 'pre-line' }}>{selectedDetailAlat.deskripsi || 'Tidak ada deskripsi.'}</p></div>
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 12, display: 'flex', justifyContent: 'flex-end' }}><button type="button" onClick={() => { onCloseDetailModal(); onPinjamClick(selectedDetailAlat); }} disabled={selectedDetailAlat.stok <= 0} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, color: selectedDetailAlat.stok > 0 ? '#fff' : '#9ca3af', background: selectedDetailAlat.stok > 0 ? '#2563eb' : '#f3f4f6', border: 'none', borderRadius: 8, cursor: selectedDetailAlat.stok > 0 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}><FaTools style={{ fontSize: 12 }} />Pinjam</button></div>
+        </div>)}
+      </Modal>
+
+      {/* MODAL: FORM PEMINJAMAN */}
+      <Modal isOpen={isModalOpen} onClose={onCloseModal} title="Form Peminjaman">
+        {(() => {
+          const mapelObj = daftarMapel.find(m => m.id === selectedMapel);
+          const mapelNama = mapelObj?.nama || '';
+          if (!selectedMapel && !rosterNow) return null;
+          if (!selectedMapel && rosterNow) return (<div style={{ padding: '8px 12px', fontSize: 12, color: '#6b7280', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 6 }}><FaInfoCircle style={{ color: '#9ca3af', flexShrink: 0 }} />Tidak ada jadwal pelajaran saat ini untuk kelas <b style={{ color: '#374151' }}>{user?.kelas || '-'}</b>. Silakan pilih manual.</div>);
+          if (rosterNow && selectedMapel === rosterNow.mapelId) return (<div style={{ padding: '8px 12px', fontSize: 12, color: '#065f46', background: '#ecfdf5', borderRadius: 8, border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: 6 }}><FaCheckCircle style={{ color: '#059669', flexShrink: 0 }} />Mapel sekarang: <b>{mapelNama}</b> — Kelas kamu: <b>{user?.kelas || '-'}</b></div>);
+          if (selectedMapel) return (<div style={{ padding: '8px 12px', fontSize: 12, color: '#92400e', background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 6 }}><FaExclamationTriangle style={{ color: '#d97706', flexShrink: 0 }} />Kamu memilih: <b>{mapelNama}</b></div>);
+          return null;
+        })()}
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Alat</label><input type="text" readOnly value={selectedAlat?.nama || ''} style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#f9fafb', boxSizing: 'border-box' }} /></div>
+          <div><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Jumlah</label><input type="number" min="1" max={selectedAlat?.stok || 1} value={jumlah} onChange={onJumlahChange} style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} /><p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>Stok: {selectedAlat?.stok || 0}</p></div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Mapel</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 6, maxHeight: 160, overflowY: 'auto', padding: 10, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              {daftarMapel.length > 0 ? daftarMapel.map(m => (
+                <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#374151', background: selectedMapel === m.id ? '#eff6ff' : 'transparent', border: '1px solid', borderColor: selectedMapel === m.id ? '#2563eb' : 'transparent', transition: 'all 0.1s' }} onMouseEnter={e => { if (selectedMapel !== m.id) e.currentTarget.style.background = '#f9fafb'; }} onMouseLeave={e => { if (selectedMapel !== m.id) e.currentTarget.style.background = 'transparent'; }}>
+                  <input type="radio" name="mapel" value={m.id} checked={selectedMapel === m.id} onChange={onMapelChange} style={{ accentColor: '#2563eb' }} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nama}</span>
+                </label>
+              )) : <p style={{ gridColumn: '1/-1', fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>Belum ada data mapel.</p>}
+            </div>
+          </div>
+          {selectedMapel && (
+            <div><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Guru</label>
+              {gurus.length > 0 ? <select value={selectedGuru} onChange={onGuruChange} style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, background: '#fff', outline: 'none' }}><option value="">Pilih guru</option>{gurus.map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}</select>
+              : <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>Tidak ada guru untuk {daftarMapel.find(m => m.id === selectedMapel)?.nama || 'mapel ini'}</p>}
+            </div>
+          )}
+          {message && <div style={{ padding: 10, fontSize: 13, color: '#991b1b', background: '#fee2e2', borderRadius: 8 }}>{message}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 8 }}>
+            <button type="button" onClick={onCloseModal} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer' }}>Batal</button>
+            <button type="submit" disabled={submitting || !selectedMapel || !selectedGuru} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#2563eb', border: 'none', borderRadius: 8, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: (!selectedMapel || !selectedGuru) ? 0.5 : 1 }}>{submitting ? <><Spin />Menyimpan...</> : 'Ajukan Peminjaman'}</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL: BATAL */}
+      <Modal isOpen={cancelModalOpen} onClose={onCloseCancelModal} title="Batalkan Peminjaman">
+        {cancelTarget && (<div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaExclamationTriangle style={{ fontSize: 24, color: '#ef4444' }} /></div>
+          <div style={{ textAlign: 'center' }}><h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>Yakin membatalkan?</h3><p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>"<b style={{ color: '#111827' }}>{cancelTarget.alat?.nama || '-'}</b>"</p></div>
+          <div style={{ width: '100%', background: '#f9fafb', borderRadius: 8, padding: 12, border: '1px solid #f3f4f6' }}>
+            {[['Mapel', cancelTarget.mapel], ['Jumlah', cancelTarget.jumlah], ['Tanggal', fmt(cancelTarget.tanggalPeminjaman)]].map(([l, v]) => <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13 }}><span style={{ color: '#6b7280' }}>{l}</span><span style={{ fontWeight: 500, color: '#111827' }}>{v}</span></div>)}
+          </div>
+          <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+            <button type="button" onClick={onCloseCancelModal} disabled={cancelling} style={{ flex: 1, padding: 10, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', cursor: 'pointer', opacity: cancelling ? 0.5 : 1 }}>Tidak</button>
+            <button type="button" onClick={onConfirmCancel} disabled={cancelling} style={{ flex: 1, padding: 10, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', background: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: cancelling ? 0.5 : 1 }}>{cancelling ? <><Spin />Membatalkan...</> : <><FaBan style={{ fontSize: 11 }} />Ya, Batalkan</>}</button>
+          </div>
+        </div>)}
+      </Modal>
+
+      {/* MODAL: AJUKAN PENGEMBALIAN */}
+      <Modal isOpen={retReqModal.open} onClose={closeRetReq} title="Ajukan Pengembalian">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Upload bukti pembelajaran (maks 3 foto). Foto akan dicrop & dikompres otomatis.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {photos.map((p, i) => (
+              <div key={i} style={{ position: 'relative', height: 100, background: '#f3f4f6', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                <img src={p.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" onClick={() => removePhoto(i)} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: 'rgba(239,68,68,0.8)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaTimes style={{ fontSize: 9 }} /></button>
+              </div>
+            ))}
+            {photos.length < 3 && (
+              <label style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #d1d5db', borderRadius: 8, cursor: 'pointer', color: '#9ca3af', fontSize: 12, gap: 4 }}>
+                <FaImage style={{ fontSize: 20 }} /><span>Tambah Foto</span>
+                <input type="file" accept="image/*" onChange={handleFileSel} hidden />
+              </label>
+            )}
+          </div>
+          {cropSt.open && (
+            <div style={{ position: 'relative', width: '100%', height: 250, background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+              <Cropper image={cropSt.src} crop={crop} zoom={zoom} aspect={4 / 3} onCropChange={setCrop} onCropComplete={onCropDone} onZoomChange={setZoom} />
+            </div>
+          )}
+          {cropSt.open && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#6b7280' }}>Zoom</span>
+              <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1 }} />
+              <button type="button" onClick={cancelCrop} style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 12 }}>Batal</button>
+              <button type="button" onClick={confirmCrop} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Gunakan</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={closeRetReq} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer' }}>Batal</button>
+            <button type="button" onClick={submitRetReq} disabled={submittingRet || photos.length === 0} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#2563eb', border: 'none', borderRadius: 8, cursor: submittingRet ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: (submittingRet || !photos.length) ? 0.5 : 1 }}>
+              {submittingRet ? <><Spin />Mengirim...</> : 'Ajukan Pengembalian'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
   );
 }
