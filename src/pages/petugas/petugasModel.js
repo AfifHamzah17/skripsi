@@ -147,18 +147,21 @@ export const petugasModel = {
     } catch (error) { return { error: true, message: error.message }; }
   },
 
-  createUser: async (userData) => {
+ createUser: async (userData) => {
     try {
       const base = await API();
       const userRes = await fetch(base + '/users', { method: 'POST', headers: jsonHeader(), body: JSON.stringify(userData) });
       const userDataRes = await safeJson(userRes);
       if (!userRes.ok) throw new Error(userDataRes.message);
       if (userData.role === 'guru') {
-        const ct = await fetch(base + '/teachers/user/' + userId, { headers });
-        if (ct.ok) {
-          const td = await safeJson(ct);
-          if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});
-        } else await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
+        const newId = userDataRes.result?.id;
+        if (newId) {
+          const ct = await fetch(base + '/teachers/user/' + newId, { headers: authHeader() });
+          if (ct.ok) {
+            const td = await safeJson(ct);
+            if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});
+          } else await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId: newId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
+        }
       }
       return userDataRes;
     } catch (error) { return { error: true, message: error.message }; }
@@ -167,12 +170,11 @@ export const petugasModel = {
   updateUser: async (userId, userData) => {
     try {
       const base = await API();
-      const headers = authHeader();
       const userRes = await fetch(base + '/users/' + userId, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify(userData) });
       const userDataRes = await safeJson(userRes);
       if (!userRes.ok) throw new Error(userDataRes.message);
       if (userData.role === 'guru') {
-        const ct = await fetch(base + '/teachers/user/' + userId, { headers });
+        const ct = await fetch(base + '/teachers/user/' + userId, { headers: authHeader() });
         if (ct.ok) {
           const td = await safeJson(ct);
           if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});

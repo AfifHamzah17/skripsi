@@ -60,7 +60,7 @@ export default function PetugasMapelView({ user, addTrigger, userList = [], teac
   const [gridKelas, setGridKelas] = useState('');
 
   const nameToId = useMemo(() => { const m = {}; userList.forEach(u => { if (u.nama) m[u.nama.trim().toLowerCase()] = u.id; }); return m; }, [userList]);
-  const guruOpts = useMemo(() => teachers.filter(t => t.nama).map(t => ({ value: t.id, label: t.nama })), [teachers]);
+  const guruOpts = useMemo(() => userList.filter(u => u.role === 'guru' && u.nama).map(u => ({ value: u.id, label: u.nama })), [userList]);
   const mapelOpts = useMemo(() => mapelList.map(m => ({ value: m.id, label: m.nama })), [mapelList]);
   const loadMapel = useCallback(async () => { setMapelLoading(true); const r = await getAllMapel(); if (r.error) toast.error('Gagal: ' + r.message); else setMapelList(r.result || []); setMapelLoading(false); }, []);
   const loadRoster = useCallback(async () => { setRosterLoading(true); const r = await getAllRoster(); if (r.error) toast.error('Gagal: ' + r.message); else setRosterList(r.result || []); setRosterLoading(false); }, []);
