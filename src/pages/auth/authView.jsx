@@ -12,7 +12,7 @@ const parsePhone = v => v.replace(/\D/g, '');
 const authH = () => { const t = localStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
 const JURUSAN = [{ v: 'RPL', l: 'RPL' }, { v: 'TKJ', l: 'TKJ' }];
 const TINGKAT = ['X', 'XI', 'XII'];
-const NOMOR = ['1', '2', '3'];
+const NOMOR = ['1', '2'];
 const waLink = p => 'https://wa.me/62' + (p || '').replace(/\D/g, '').replace(/^0/, '');
 
 const PasswordStrengthIndicator = ({ password }) => {

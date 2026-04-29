@@ -153,9 +153,12 @@ export const petugasModel = {
       const userRes = await fetch(base + '/users', { method: 'POST', headers: jsonHeader(), body: JSON.stringify(userData) });
       const userDataRes = await safeJson(userRes);
       if (!userRes.ok) throw new Error(userDataRes.message);
-      if (userData.role === 'guru' && userData.mapel?.length > 0) {
-        const userId = userDataRes.user?.id || userDataRes.id;
-        if (userId) await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
+      if (userData.role === 'guru') {
+        const ct = await fetch(base + '/teachers/user/' + userId, { headers });
+        if (ct.ok) {
+          const td = await safeJson(ct);
+          if (td.teacher) await fetch(base + '/teachers/' + td.teacher.id, { method: 'PUT', headers: jsonHeader(), body: JSON.stringify({ mapel: userData.mapel, updatedAt: new Date().toISOString() }) }).catch(() => {});
+        } else await fetch(base + '/teachers', { method: 'POST', headers: jsonHeader(), body: JSON.stringify({ userId, mapel: userData.mapel, createdAt: new Date().toISOString() }) }).catch(() => {});
       }
       return userDataRes;
     } catch (error) { return { error: true, message: error.message }; }

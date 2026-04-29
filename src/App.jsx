@@ -1,3 +1,4 @@
+//src/App.jsx
 import React, { useEffect, useState } from 'react';
 import Router from './routes/router';
 import Sidebar from './components/sidebar/Sidebar';

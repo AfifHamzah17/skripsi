@@ -28,6 +28,7 @@ export const updateTeacher       = async (id, data)                             
 export const deleteTeacher       = async (id)                                    => await makeRequest(`/teachers/${id}`, { method: 'DELETE' });
 export const checkTeacherMapel   = async ()                                      => await makeRequest('/teachers/mapel');
 export const saveTeacherMapel    = async (mapel)                                 => await makeRequest('/teachers/mapel', { method: 'POST', body: JSON.stringify({ mapel }) });
+export const getMyTeacherProfile = async ()                                      => await makeRequest('/teachers/me');
 
 // ========== GURU MODEL CLASS ==========
 import { getPeminjamanByGuru } from '../models/peminjaman-model';

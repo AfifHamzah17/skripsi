@@ -1,5 +1,6 @@
 // src/pages/petugas/petugasPresenter.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getAllRoster } from '../models/roster-model';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../Context/AuthContext';
 import { petugasModel } from './petugasModel';
@@ -23,15 +24,24 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
   return new Promise((resolve) => { canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85); });
 };
 
+// ← FIX: fungsi di luar komponen, tidak ada scope issue
+const VALID_TABS = ['dashboard', 'peminjaman', 'alat', 'guru', 'laporan', 'mapel'];
+const getTabFromHash = () => {
+  const tab = window.location.hash.replace('#/', '').split('/')[1] || 'dashboard';
+  return VALID_TABS.includes(tab) ? tab : 'dashboard';
+};
+
 export default function PetugasPresenter() {
   const { user, logout } = useAuth();
   const [peminjamans, setPeminjamans] = useState([]);
   const [alats, setAlats] = useState([]);
   const [guruList, setGuruList] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [rosterList, setRosterList] = useState([]);
   const [statistics, setStatistics] = useState({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // ← FIX: lazy init — langsung baca hash saat komponen pertama kali mount
+  const [activeTab, setActiveTab] = useState(getTabFromHash);
 
   const [searchAlat, setSearchAlat] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -68,12 +78,13 @@ export default function PetugasPresenter() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [editLaporanModal, setEditLaporanModal] = useState({ isOpen: false, data: null, jumlah: '', mapel: '', kondisiPengembalian: '' });  
+  const [editLaporanModal, setEditLaporanModal] = useState({ isOpen: false, data: null, jumlah: '', mapel: '', kondisiPengembalian: '' });
   const [detailModal, setDetailModal] = useState({ isOpen: false, data: null });
 
+  // ← FIX: useEffect hanya daftarkan listener untuk navigasi setelah mount
   useEffect(() => {
-  const handleHash = () => { const tab = window.location.hash.replace('#/', '').split('/')[1] || 'dashboard'; setActiveTab(['dashboard', 'peminjaman', 'alat', 'guru', 'laporan', 'mapel'].includes(tab) ? tab : 'dashboard'); };    
-  handleHash(); window.addEventListener('hashchange', handleHash);
+    const handleHash = () => setActiveTab(getTabFromHash());
+    window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
@@ -84,6 +95,8 @@ export default function PetugasPresenter() {
     try {
       const data = await petugasModel.getInitialData();
       setPeminjamans(data.peminjamans); setAlats(data.alats); setGuruList(data.guruList); setTeachers(data.teachers || []);
+      const rosterRes = await getAllRoster();
+      setRosterList(!rosterRes.error ? rosterRes.result || [] : []);
       setStatistics({ totalPeminjaman: data.peminjamans.length, pending: data.peminjamans.filter(p => p.status === 'pending').length, disetujui: data.peminjamans.filter(p => p.status === 'disetujui').length, kembali: data.peminjamans.filter(p => ['kembali', 'dikembalikan'].includes(p.status)).length });
     } catch { toast.error('Gagal mengambil data'); }
     finally { setLoading(false); }
@@ -91,14 +104,29 @@ export default function PetugasPresenter() {
 
   const handleRefreshData = async () => { await loadData(); toast.success('Data berhasil diperbarui'); };
 
-  // --- Resolve guruId → user ---
   const guruIdToUser = useMemo(() => {
     const map = {};
     teachers.forEach(t => { const u = guruList.find(usr => usr.id === t.userId); if (u) map[t.id] = u; });
     return map;
   }, [teachers, guruList]);
+  
+  const userRosterMap = useMemo(() => {
+    const map = {};
+    guruList.forEach(u => {
+      if (u.role !== 'guru') return;
+      const rForU = rosterList.filter(r => {
+        const teacher = teachers.find(t => t.userId === u.id);
+        return teacher && r.guruId === teacher.id;
+      });
+      if (rForU.length) {
+        const grouped = {};
+        rForU.forEach(r => { if (!r.mapelNama) return; if (!grouped[r.mapelNama]) grouped[r.mapelNama] = new Set(); grouped[r.mapelNama].add(r.kelas); });
+        map[u.id] = Object.entries(grouped).map(([nama, kelasSet]) => ({ nama, kelasList: [...kelasSet].sort() }));
+      }
+    });
+    return map;
+  }, [guruList, teachers, rosterList]);
 
-  // --- Filters ---
   const filteredAlats = useMemo(() => {
     let res = alats;
     if (searchAlat) res = res.filter(a => a.nama.toLowerCase().includes(searchAlat.toLowerCase()) || a.merek?.toLowerCase().includes(searchAlat.toLowerCase()));
@@ -130,7 +158,6 @@ export default function PetugasPresenter() {
     return res;
   }, [peminjamans, searchLaporan, filterStatusLaporan, startDate, endDate]);
 
-  // --- Sort helper ---
   const sortData = useCallback((data, sort, getVal) => {
     if (!sort.key) return data;
     return [...data].sort((a, b) => {
@@ -157,11 +184,9 @@ export default function PetugasPresenter() {
     return '';
   }, [guruIdToUser]);
 
-  // --- FIX: key/dir yang benar ---
   const handleGuruSort = useCallback((key) => { setGuruSort(p => ({ key, dir: p.key === key && p.dir === 'asc' ? 'desc' : 'asc' })); setGuruPage(1); }, []);
   const handleLaporanSort = useCallback((key) => { setLaporanSort(p => ({ key, dir: p.key === key && p.dir === 'asc' ? 'desc' : 'asc' })); setLaporanPage(1); }, []);
 
-  // --- Pagination + Sort ---
   const totalPagesGuru = Math.ceil(filteredGuruList.length / guruLimit);
   const paginatedGuruList = useMemo(() => filteredGuruList.slice((guruPage - 1) * guruLimit, (guruPage - 1) * guruLimit + guruLimit), [filteredGuruList, guruPage, guruLimit]);
   const sortedGuruList = useMemo(() => sortData(paginatedGuruList, guruSort, getGuruVal), [paginatedGuruList, guruSort, sortData, getGuruVal]);
@@ -172,7 +197,6 @@ export default function PetugasPresenter() {
   const sortedLaporan = useMemo(() => sortData(paginatedLaporan, laporanSort, getLaporanVal), [paginatedLaporan, laporanSort, sortData, getLaporanVal]);
   useEffect(() => { setLaporanPage(1); }, [searchLaporan, filterStatusLaporan, startDate, endDate, laporanLimit]);
 
-  // --- Chart Data ---
   const chartData = useMemo(() => {
     const kondisiCounts = { 'Baik': 0, 'Kurang': 0, 'Rusak Berat': 0, 'Belum Dikembalikan': 0 };
     const mapelCounts = {}, guruCounts = {}, alatCounts = {}, kelasCounts = {}, trendBulanan = {};
@@ -205,7 +229,6 @@ export default function PetugasPresenter() {
     };
   }, [peminjamans]);
 
-  // --- Actions ---
   const handleApprove = (id) => setConfirmModal({ isOpen: true, title: 'Setujui Peminjaman', message: 'Stok alat akan dikurangi.', icon: <FaCheckCircle className="mx-auto h-12 w-12 text-green-500" />, onConfirm: () => doAction(id, 'approve'), confirmText: 'Ya, Setujui', cancelText: 'Batal' });
   const handleReject = (id) => setConfirmModal({ isOpen: true, title: 'Tolak Peminjaman', message: 'Peminjaman ini akan ditolak.', icon: <FaTimesCircle className="mx-auto h-12 w-12 text-red-500" />, onConfirm: () => doAction(id, 'reject'), confirmText: 'Ya, Tolak', cancelText: 'Batal' });
 
@@ -249,7 +272,6 @@ export default function PetugasPresenter() {
   const handleDeleteAlat = (id) => setConfirmModal({ isOpen: true, title: 'Hapus Alat', message: 'Data alat akan dihapus permanen.', icon: <FaTrash className="mx-auto h-12 w-12 text-red-500" />, onConfirm: async () => { const res = await petugasModel.removeAlat(id); if (res.error) toast.error(res.message); else { toast.success('Alat dihapus'); loadData(); } setConfirmModal(p => ({ ...p, isOpen: false })); }, confirmText: 'Hapus', cancelText: 'Batal' });
   const handleViewAlatDetail = async (id) => { const res = await petugasModel.getAlatDetail(id); if (res.error) toast.error(res.message); else { setAlatDetail(res.result || res.alat || res); setAlatDetailModalOpen(true); } };
 
-  // --- FIX: Tracking client-side, tanpa API ---
   const handleViewAlatTracking = (id) => {
     const alat = alats.find(a => a.id === id);
     const riwayat = peminjamans.filter(p => p.alatId === id).map(p => ({
@@ -260,7 +282,7 @@ export default function PetugasPresenter() {
     setAlatTrackingModalOpen(true);
   };
 
-  const handleOpenEditLaporan = (p) => setEditLaporanModal({ isOpen: true, data: p, jumlah: p.jumlah, mapel: Array.isArray(p.mapel) ? p.mapel[0] : p.mapel, kondisiPengembalian: p.kondisiPengembalian || '' });  
+  const handleOpenEditLaporan = (p) => setEditLaporanModal({ isOpen: true, data: p, jumlah: p.jumlah, mapel: Array.isArray(p.mapel) ? p.mapel[0] : p.mapel, kondisiPengembalian: p.kondisiPengembalian || '' });
   const handleSaveEditLaporan = async () => {
     if (!editLaporanModal.jumlah || parseInt(editLaporanModal.jumlah) < 1) return toast.error('Jumlah harus diisi');
     const payload = { jumlah: parseInt(editLaporanModal.jumlah), mapel: editLaporanModal.mapel };
@@ -317,7 +339,7 @@ export default function PetugasPresenter() {
 
   return (
     <PetugasView
-      user={user} peminjamans={peminjamans} alats={filteredAlats} guruList={guruList} statistics={statistics} chartData={chartData} loading={loading} activeTab={activeTab}
+      user={user} peminjamans={peminjamans} alats={filteredAlats} guruList={guruList} teachers={teachers} statistics={statistics} chartData={chartData} loading={loading} activeTab={activeTab}
       filteredPeminjamans={filteredPeminjamans} filteredGuruList={filteredGuruList} filteredLaporan={filteredLaporan}
       sortedGuruList={sortedGuruList} guruSort={guruSort} handleGuruSort={handleGuruSort}
       sortedLaporan={sortedLaporan} laporanSort={laporanSort} handleLaporanSort={handleLaporanSort}
@@ -346,7 +368,7 @@ export default function PetugasPresenter() {
       handleDeleteUser={handleDeleteUser} handlePasswordChange={handlePasswordChange} confirmResetPassword={confirmResetPassword}
       handleAddUser={handleAddUser} handleCloseUserModal={handleCloseUserModal} handleCreateUser={handleCreateUser}
       handleUpdateUser={handleUpdateUser} handleEditUser={handleEditUser} handleViewAlatTracking={handleViewAlatTracking}
-      detailModal={detailModal} setDetailModal={setDetailModal} handleViewDetail={handleViewDetail}    
-      />
+      detailModal={detailModal} setDetailModal={setDetailModal} handleViewDetail={handleViewDetail} userRosterMap={userRosterMap}
+    />
   );
 }

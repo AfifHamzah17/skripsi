@@ -1,6 +1,6 @@
 // src/components/sidebar/Sidebar.jsx
 import React from 'react';
-import { FaHome,FaUser,FaTools,FaClipboardList,FaSignOutAlt,FaChevronLeft,FaChevronRight,FaChalkboardTeacher,FaChartBar,FaHistory,FaBook } from 'react-icons/fa';
+import { FaHome,FaUser,FaTools,FaClipboardList,FaSignOutAlt,FaChevronLeft,FaChevronRight,FaChalkboardTeacher,FaChartBar,FaHistory,FaBook,FaCalendarAlt } from 'react-icons/fa';
 
 const MenuItem = ({ to, icon, label, isActive, showLabel }) => (
   <li style={{listStyle:'none'}}>
@@ -15,7 +15,7 @@ export default function Sidebar({ user, onLogout, isOpen, toggleSidebar, isColla
   const getMenuItems = () => {
     switch (user?.role) {
       case 'siswa': return [{to:'siswa/pinjam',icon:<FaTools/>,label:'Pinjam Alat'},{to:'siswa/riwayat',icon:<FaHistory/>,label:'Riwayat Peminjaman'}];
-      case 'guru': return [{to:'guru/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'guru/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'guru/mapel',icon:<FaBook/>,label:'Mata Pelajaran'}];
+      case 'guru': return [{to:'guru/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'guru/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'guru/mapel',icon:<FaBook/>,label:'Mata Pelajaran'},{to:'guru/jadwal',icon:<FaCalendarAlt/>,label:'Jadwal Mengajar'}];
       case 'admin': return [{to:'admin/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'admin/alat',icon:<FaTools/>,label:'Kelola Alat'},{to:'admin/laporan',icon:<FaChartBar/>,label:'Laporan'}];
       case 'petugas': return [{to:'petugas/dashboard',icon:<FaHome/>,label:'Dashboard'},{to:'petugas/peminjaman',icon:<FaClipboardList/>,label:'Peminjaman'},{to:'petugas/alat',icon:<FaTools/>,label:'Manajemen Alat'},{to:'petugas/guru',icon:<FaChalkboardTeacher/>,label:'Manajemen Akun'},{to:'petugas/mapel',icon:<FaBook/>,label:'Manajemen Mapel'},{to:'petugas/laporan',icon:<FaChartBar/>,label:'Analisis Praktik Siswa'}];
       default: return [];
